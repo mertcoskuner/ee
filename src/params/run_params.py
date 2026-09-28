@@ -11,6 +11,7 @@ MODES = [
     "visualize",
     "tsne",
     "gradcam",
+    "geometry",
     "defense",
     "federated",
 ]

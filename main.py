@@ -10,6 +10,7 @@ import torch
 from config.args import args_parser
 from defense import run_defense
 from federated import run_federated
+from geometry import run_geometry
 from gradcam import run_gradcam
 from src.params import get_params
 from src.utils.helper_experiments import central_runs
@@ -34,6 +35,7 @@ RUNNERS = {
     "visualize": run_visualize,
     "tsne": run_tsne,
     "gradcam": run_gradcam,
+    "geometry": run_geometry,
     "defense": run_defense,
     "federated": run_federated,
 }
