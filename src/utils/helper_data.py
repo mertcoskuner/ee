@@ -6,12 +6,12 @@ from torchvision import datasets, transforms
 
 
 def get_transforms():
-    """Convert images to tensors in [0, 1] without normalization."""
+    """Return a transform mapping images to [0, 1] tensors, unnormalized."""
     return transforms.ToTensor()
 
 
 def get_loaders(params):
-    """Return disjoint training and validation loaders from MNIST training.
+    """Return disjoint train/validation loaders from the MNIST train split.
 
     Use params.run.seed for the split and shuffle only training batches.
     Raise ValueError if validation_size leaves either subset empty.

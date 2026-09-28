@@ -21,14 +21,12 @@ class AttackParams:
 
     @property
     def alpha_linf(self) -> float:
-        """Return the L-infinity PGD step size, 2.5 times eps divided by
-        steps.
-        """
+        """Return the L-infinity PGD step size, 2.5 * eps_linf / steps."""
         return 2.5 * self.eps_linf / self.steps
 
     @property
     def alpha_l2(self) -> float:
-        """Return the L2 PGD step size, 2.5 times eps divided by steps."""
+        """Return the L2 PGD step size, 2.5 * eps_l2 / steps."""
         return 2.5 * self.eps_l2 / self.steps
 
 

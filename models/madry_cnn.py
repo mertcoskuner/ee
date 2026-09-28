@@ -8,8 +8,8 @@ class MadryCNN(nn.Module):
     """Classify MNIST images using the official checkpoint architecture.
 
     Inputs have shape (N, 1, 28, 28) and pixel values in [0, 1].
-    Flattening uses NHWC order to match the original TensorFlow dense-
-    layer weights.
+    Flattening uses NHWC order to match the original TensorFlow
+    dense-layer weights.
     """
 
     def __init__(self, num_classes=10):

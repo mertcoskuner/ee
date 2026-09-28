@@ -117,8 +117,7 @@ def convert_all(tf):
 
 
 def verify(tf, n, eps=0.3, k=40, a=0.01, seed=0, batch=200):
-    """Print TensorFlow/PyTorch agreement using identical PGD random
-    starts.
+    """Print TensorFlow/PyTorch agreement using identical PGD random starts.
 
     Compare clean logits and attacked predictions for the natural and
     adversarially trained checkpoints on the first n test images. This
