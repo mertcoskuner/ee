@@ -2,6 +2,8 @@
 
 import torch.nn as nn
 
+from .registry import MODELS
+
 
 class MLP(nn.Module):
     """Classify MNIST images with ReLU hidden layers and dropout.
@@ -26,3 +28,11 @@ class MLP(nn.Module):
     def forward(self, x):
         """Return unnormalized class logits for a batch of MNIST images."""
         return self.head(self.body(x.flatten(1)))
+
+
+@MODELS.register("mlp", rank=2)
+def build_mlp(p):
+    """Build the MLP from model parameters."""
+    return MLP(
+        hidden_sizes=p.hidden_sizes, num_classes=p.num_classes, dropout=p.dropout
+    )

@@ -2,6 +2,8 @@
 
 import torch
 
+from .registry import AGGREGATORS
+
 
 class CoordinateMedian:
     """Take the median of every coordinate independently.
@@ -14,3 +16,9 @@ class CoordinateMedian:
         """Return the coordinate-wise median of the updates."""
         stacked = torch.stack(updates)
         return (stacked.median(0).values - (-stacked).median(0).values) / 2
+
+
+@AGGREGATORS.register("median", rank=2)
+def build_median(fl, f):
+    """Build the coordinate-wise median."""
+    return CoordinateMedian()

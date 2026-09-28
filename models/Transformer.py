@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .registry import MODELS
+
 
 class VisionTransformer(nn.Module):
     """Classify MNIST images with a pre-norm Transformer encoder (ViT).
@@ -59,3 +61,17 @@ class VisionTransformer(nn.Module):
         tokens = torch.cat([cls, tokens], dim=1) + self.pos_embed
         tokens = self.encoder(self.dropout(tokens))
         return self.head(self.norm(tokens[:, 0]))
+
+
+@MODELS.register("transformer", rank=3)
+def build_transformer(p):
+    """Build the Vision Transformer from model parameters."""
+    return VisionTransformer(
+        patch_size=p.patch_size,
+        num_classes=p.num_classes,
+        dim=p.dim,
+        depth=p.depth,
+        heads=p.heads,
+        mlp_dim=p.mlp_dim,
+        dropout=p.dropout,
+    )

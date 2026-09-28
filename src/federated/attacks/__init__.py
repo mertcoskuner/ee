@@ -1,31 +1,31 @@
-"""Byzantine attacks on federated learning: label flip, ALIE, IPM, sign flip, noise."""
+"""Byzantine attacks on federated learning, registered by name in FL_ATTACKS.
+
+Each module registers a builder build(fl_params) returning an object whose
+craft(benign_updates, num_byzantine) returns the malicious updates, or None
+for attacks that act through training (registered with client_class, such
+as label flipping) and for "none". Every module is imported automatically.
+"""
+
+from src.utils.helper_registry import import_submodules
 
 from .alie import ALIE, alie_z
 from .gaussian import GaussianNoise
 from .ipm import IPM
 from .label_flip import LabelFlipClient
+from .registry import FL_ATTACKS
 from .sign_flip import SignFlip
 
-FL_ATTACKS = ["none", "label_flip", "alie", "ipm", "sign_flip", "gaussian"]
+import_submodules(__name__, __path__)
 
 
 def build_attack(fl):
-    """Return the omniscient attack object for fl.attack, or None.
+    """Return the update-crafting object for fl.attack, or None."""
+    return FL_ATTACKS.get(fl.attack)(fl)
 
-    Label flipping is a data-poisoning attack handled by LabelFlipClient,
-    so it (like "none") has no update-crafting object.
-    """
-    if fl.attack in ("none", "label_flip"):
-        return None
-    if fl.attack == "alie":
-        return ALIE(fl.alie_z)
-    if fl.attack == "ipm":
-        return IPM(fl.ipm_epsilon)
-    if fl.attack == "sign_flip":
-        return SignFlip(fl.sign_flip_scale)
-    if fl.attack == "gaussian":
-        return GaussianNoise(fl.gaussian_sigma)
-    raise ValueError(f"Unknown federated attack: {fl.attack}")
+
+def client_class(fl, default):
+    """Return the client class Byzantine clients use under fl.attack."""
+    return FL_ATTACKS.meta(fl.attack, "client_class", default)
 
 
 __all__ = [
@@ -37,4 +37,5 @@ __all__ = [
     "SignFlip",
     "alie_z",
     "build_attack",
+    "client_class",
 ]

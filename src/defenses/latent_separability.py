@@ -12,7 +12,12 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 
+from src.utils.helper_data import load_mnist_tensors
+from src.utils.helper_eval import features
+from src.utils.helper_plot import plot_latent_separability
 from src.utils.helper_stats import anomaly_indices
+
+from .registry import DEFENSES
 
 
 def latent_separability(
@@ -57,3 +62,31 @@ def latent_separability(
         and s["minority_fraction"] < min_fraction
     ]
     return {"classes": stats, "flagged": flagged, "embeddings": embeddings}
+
+
+@DEFENSES.register("latent_separability", rank=2)
+def run_latent_separability(model, params, device):
+    """Cluster each class's training-set features in latent space and report."""
+    d = params.defense
+    x, y = load_mnist_tensors(params, train=True)
+    x, y = x[: d.ls_samples], y[: d.ls_samples].numpy()
+    res = latent_separability(
+        features(model, x, device),
+        y,
+        params.model.num_classes,
+        d.ls_components,
+        d.ls_min_fraction,
+        d.ls_threshold,
+        seed=params.run.seed,
+    )
+    print("\n=== Latent separability ===")
+    for s in res["classes"]:
+        print(
+            f"  Class {s['class']}: minority cluster "
+            f"{100 * s['minority_fraction']:5.1f}%  "
+            f"silhouette {s['silhouette']:+.3f}  "
+            f"anomaly index {s['anomaly_index']:5.2f}"
+        )
+    print(f"  Flagged classes: {res['flagged'] or 'none'}")
+    plot_latent_separability(res, params)
+    return {k: v for k, v in res.items() if k != "embeddings"}

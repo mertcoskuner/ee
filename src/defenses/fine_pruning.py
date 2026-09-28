@@ -4,6 +4,10 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from src.utils.helper_data import get_loaders, loader_tensors
+
+from .registry import DEFENSES
+
 
 def pruning_target(model):
     """Return (layer, kind) whose units are pruned.
@@ -138,3 +142,32 @@ def fine_pruning(model, x_val, y_val, train_loader, max_drop, epochs, lr, device
         "acc_after_prune": after_prune,
         "acc_after_finetune": accuracy(model, x_val, y_val),
     }
+
+
+@DEFENSES.register("fine_pruning", rank=3, modifies_model=True)
+def run_fine_pruning(model, params, device):
+    """Prune dormant units, fine-tune, save the pruned checkpoint, and report."""
+    d = params.defense
+    train_loader, val_loader = get_loaders(params)
+    x_val, y_val = loader_tensors(val_loader, d.fp_eval_samples)
+    res = fine_pruning(
+        model,
+        x_val.to(device),
+        y_val.to(device),
+        train_loader,
+        d.fp_max_drop,
+        d.fp_epochs,
+        params.training.learning_rate,
+        device,
+    )
+    path = f"{params.model.tag}_fine_pruned.pth"
+    torch.save(model.state_dict(), path)
+    print("\n=== Fine-pruning ===")
+    print(f"  Pruned {res['pruned']}/{res['units']} {res['layer']} units")
+    print(
+        f"  Val accuracy: before {res['acc_before']:.4f}  "
+        f"after pruning {res['acc_after_prune']:.4f}  "
+        f"after fine-tuning {res['acc_after_finetune']:.4f}"
+    )
+    print(f"  Saved pruned model ({path})")
+    return res

@@ -4,7 +4,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from src.utils.helper_data import load_mnist_tensors
+from src.utils.helper_plot import plot_neural_cleanse
 from src.utils.helper_stats import anomaly_indices
+
+from .registry import DEFENSES
 
 
 def reverse_trigger(
@@ -99,3 +103,30 @@ def neural_cleanse(model, x, num_classes, steps, init_cost, lr, threshold):
         "masks": masks,
         "patterns": patterns,
     }
+
+
+@DEFENSES.register("neural_cleanse", rank=1)
+def run_neural_cleanse(model, params, device):
+    """Reverse-engineer per-class triggers on clean test images and report."""
+    d = params.defense
+    x, _ = load_mnist_tensors(params, train=False)
+    torch.manual_seed(params.run.seed)
+    res = neural_cleanse(
+        model,
+        x[: d.nc_samples].to(device),
+        params.model.num_classes,
+        d.nc_steps,
+        d.nc_lambda,
+        d.nc_lr,
+        d.nc_threshold,
+    )
+    print("\n=== Neural Cleanse ===")
+    for c in range(params.model.num_classes):
+        print(
+            f"  Class {c}: mask L1 {res['norms'][c]:7.2f}  "
+            f"trigger success {100 * res['success'][c]:6.2f}%  "
+            f"anomaly index {res['anomaly_index'][c]:5.2f}"
+        )
+    print(f"  Flagged target classes: {res['flagged'] or 'none'}")
+    plot_neural_cleanse(res, params)
+    return {k: v for k, v in res.items() if k not in ("masks", "patterns")}

@@ -2,6 +2,8 @@
 
 import torch
 
+from .registry import AGGREGATORS
+
 
 class CenteredClipping:
     """Clip every update's distance to a reference point, then re-centre.
@@ -33,3 +35,9 @@ class CenteredClipping:
             v = v + torch.stack([self.clip(u - v) for u in updates]).mean(0)
         self.reference = v.detach().clone()
         return v
+
+
+@AGGREGATORS.register("centered_clipping", rank=7)
+def build_centered_clipping(fl, f):
+    """Build centered clipping with the configured radius and iterations."""
+    return CenteredClipping(fl.cc_tau, fl.cc_iterations)

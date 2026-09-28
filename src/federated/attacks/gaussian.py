@@ -2,6 +2,8 @@
 
 import torch
 
+from .registry import FL_ATTACKS
+
 
 class GaussianNoise:
     """Send independent N(0, sigma^2) updates of the model's dimension."""
@@ -21,3 +23,9 @@ class GaussianNoise:
             * torch.randn(ref.shape, generator=self.generator).to(ref.device, ref.dtype)
             for _ in range(num_byzantine)
         ]
+
+
+@FL_ATTACKS.register("gaussian", rank=5)
+def build_gaussian(fl):
+    """Build the Gaussian noise attack with the configured sigma."""
+    return GaussianNoise(fl.gaussian_sigma)

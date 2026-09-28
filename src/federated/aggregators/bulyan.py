@@ -4,6 +4,8 @@ import torch
 
 from .krum import krum_scores
 
+from .registry import AGGREGATORS
+
 
 class Bulyan:
     """Select n - 2f updates by repeated Krum, then take a trimmed mean.
@@ -28,3 +30,13 @@ class Bulyan:
         chosen = torch.stack([updates[i] for i in self.selected]).sort(0).values
         b = min(self.f, (len(chosen) - 1) // 2)
         return chosen[b : len(chosen) - b].mean(0)
+
+
+@AGGREGATORS.register(
+    "bulyan",
+    rank=6,
+    feasible=lambda n, f: (n >= 4 * f + 3, f"needs n >= 4f + 3 (n={n}, f={f})"),
+)
+def build_bulyan(fl, f):
+    """Build Bulyan for f assumed Byzantine clients."""
+    return Bulyan(f)

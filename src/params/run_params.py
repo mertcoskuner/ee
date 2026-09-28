@@ -2,22 +2,25 @@
 
 from dataclasses import dataclass
 
+from src.utils.helper_params import option
+
+MODES = [
+    "train",
+    "test",
+    "both",
+    "visualize",
+    "tsne",
+    "gradcam",
+    "defense",
+    "federated",
+]
+
 
 @dataclass
 class RunParams:
-    """Store the execution mode, seed, device, and results directory."""
+    """Execution: mode, seed, device, and results directory."""
 
-    mode: str = "both"
-    seed: int = 0
-    device: str = "cpu"
-    results_dir: str = "results"
-
-
-def get_run_params(args) -> RunParams:
-    """Build execution settings from validated CLI arguments."""
-    return RunParams(
-        mode=args.mode,
-        seed=args.seed,
-        device=args.device,
-        results_dir=args.results_dir,
-    )
+    mode: str = option("both", "experiment to run", choices=MODES)
+    seed: int = option(0, "random seed", ge=0, lt=2**32)
+    device: str = option("cpu", "torch device, e.g. cpu, mps, cuda:0")
+    results_dir: str = option("results", "directory for figures and reports")

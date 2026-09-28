@@ -2,6 +2,8 @@
 
 import torch
 
+from .registry import AGGREGATORS
+
 
 def krum_scores(updates, f):
     """Return each update's summed squared distance to its n - f - 2 neighbours."""
@@ -26,3 +28,20 @@ class Krum:
         m = min(self.m or len(updates) - self.f, len(updates))
         self.selected = krum_scores(updates, self.f).argsort()[:m].tolist()
         return torch.stack([updates[i] for i in self.selected]).mean(0)
+
+
+def krum_feasible(n, f):
+    """Return whether Krum's n >= 2f + 2 requirement holds, with a reason."""
+    return n >= 2 * f + 2, f"needs n >= 2f + 2 (n={n}, f={f})"
+
+
+@AGGREGATORS.register("krum", rank=4, feasible=krum_feasible)
+def build_krum(fl, f):
+    """Build Krum, which keeps the single most central update."""
+    return Krum(f, m=1)
+
+
+@AGGREGATORS.register("multi_krum", rank=5, feasible=krum_feasible)
+def build_multi_krum(fl, f):
+    """Build Multi-Krum, which averages the n - f most central updates."""
+    return Krum(f, m=None)

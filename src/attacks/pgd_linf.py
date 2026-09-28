@@ -4,6 +4,8 @@ import torch
 
 from src.utils.helper_attack import input_grad
 
+from .registry import ATTACKS
+
 
 def pgd_linf(model, x_nat, y, eps, alpha, steps, random_start=True):
     """Return detached L-infinity PGD examples around x_nat.
@@ -22,3 +24,13 @@ def pgd_linf(model, x_nat, y, eps, alpha, steps, random_start=True):
         x = torch.min(torch.max(x, x_nat - eps), x_nat + eps)
         x = x.clamp(0, 1)
     return x.detach()
+
+
+@ATTACKS.register(
+    "pgd_linf",
+    rank=2,
+    label=lambda a: f"PGD-linf (eps={a.eps_linf}, {a.steps} steps)",
+)
+def run_pgd_linf(model, x, y, a):
+    """Run L-infinity PGD with the configured budget and step count."""
+    return pgd_linf(model, x, y, a.eps_linf, a.alpha_linf, a.steps)

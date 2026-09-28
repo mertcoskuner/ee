@@ -4,6 +4,8 @@ import torch
 
 from src.utils.helper_stats import anomaly_indices
 
+from .registry import AGGREGATORS
+
 
 class OutlierRemoval:
     """Drop updates whose distance to the coordinate median is a MAD outlier.
@@ -34,3 +36,9 @@ class OutlierRemoval:
             [weights[i] for i in keep], dtype=stacked.dtype, device=stacked.device
         )
         return (stacked[keep] * w[:, None]).sum(0) / w.sum()
+
+
+@AGGREGATORS.register("outlier_removal", rank=10)
+def build_outlier_removal(fl, f):
+    """Build MAD-based outlier elimination."""
+    return OutlierRemoval(fl.outlier_threshold)

@@ -5,6 +5,8 @@ import math
 import torch
 from scipy.stats import norm
 
+from .registry import FL_ATTACKS
+
 
 def alie_z(n, m):
     """Return the largest z that keeps a perturbed update inside the majority.
@@ -35,3 +37,9 @@ class ALIE:
         )
         update = stacked.mean(0) - z * stacked.std(0)
         return [update.clone() for _ in range(num_byzantine)]
+
+
+@FL_ATTACKS.register("alie", rank=2)
+def build_alie(fl):
+    """Build ALIE with a fixed z, or the one derived from client counts."""
+    return ALIE(fl.alie_z)

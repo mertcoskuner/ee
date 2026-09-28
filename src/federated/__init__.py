@@ -2,6 +2,12 @@
 
 from .client import Client
 from .partition import partition
-from .server import Server, build_server_optimizer
+from .server import Server, assumed_attackers, build_server_optimizer
 
-__all__ = ["Client", "Server", "build_server_optimizer", "partition"]
+__all__ = [
+    "Client",
+    "Server",
+    "assumed_attackers",
+    "build_server_optimizer",
+    "partition",
+]

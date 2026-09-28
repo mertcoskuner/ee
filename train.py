@@ -1,47 +1,67 @@
-"""Train a standard or PGD-adversarial MNIST classifier."""
+"""Train an MNIST classifier on clean data or adversarially with any attack."""
 
 import copy
+import dataclasses
 
 import torch
 import torch.nn.functional as F
 
-from src.attacks import pgd_linf
+from src.attacks import run_attack
 from src.utils.helper_data import get_loaders
 from src.utils.helper_optim import build_optimizer
 from src.utils.helper_regularization import EarlyStopping, l1_penalty
 
 
+def training_attack_params(params):
+    """Return params whose attack settings use the training budgets.
+
+    Iterative attacks run train_steps iterations and PGD-linf steps by
+    train_alpha (Madry et al.: 40 steps of 0.01); budgets such as eps_linf
+    and eps_l2 are shared with evaluation.
+    """
+    attack = dataclasses.replace(
+        params.attack,
+        steps=params.training.train_steps,
+        step_linf=params.training.train_alpha,
+    )
+    return dataclasses.replace(params, attack=attack)
+
+
 def adversarial_batch(model, imgs, labels, params):
-    """Generate a PGD-L-infinity batch using training attack settings.
+    """Return adversarial examples of params.training.train_attack.
 
     Switch to evaluation mode and disable parameter gradients during the
     attack, then re-enable them. The caller restores training mode.
     """
     model.eval()
     model.requires_grad_(False)
-    adv = pgd_linf(
+    adv = run_attack(
         model,
         imgs,
         labels,
-        params.attack.eps_linf,
-        params.training.train_alpha,
-        params.training.train_steps,
+        params.training.train_attack,
+        training_attack_params(params),
     )
     model.requires_grad_(True)
     return adv
 
 
+def adversarial(params):
+    """Return whether training uses adversarial examples."""
+    return params.training.train_attack != "none"
+
+
 def train_one_epoch(model, loader, optimizer, device, params):
     """Optimize one epoch and return sample-weighted loss and accuracy.
 
-    Replace inputs with PGD examples when adversarial training is
+    Replace inputs with adversarial examples when adversarial training is
     enabled and add the L1 weight penalty when its coefficient is set.
     The reported loss is the cross-entropy without the penalty.
     """
     total_loss, correct, n = 0.0, 0, 0
     for batch_idx, (imgs, labels) in enumerate(loader):
         imgs, labels = imgs.to(device), labels.to(device)
-        if params.training.adv_train:
+        if adversarial(params):
             imgs = adversarial_batch(model, imgs, labels, params)
 
         model.train()
@@ -79,12 +99,12 @@ def validate(model, loader, device, params):
         imgs, labels = imgs.to(device), labels.to(device)
         with torch.no_grad():
             correct += model(imgs).argmax(1).eq(labels).sum().item()
-        if params.training.adv_train:
+        if adversarial(params):
             adv = adversarial_batch(model, imgs, labels, params)
             with torch.no_grad():
                 correct_adv += model(adv).argmax(1).eq(labels).sum().item()
         n += imgs.size(0)
-    return correct / n, (correct_adv / n if params.training.adv_train else None)
+    return correct / n, (correct_adv / n if adversarial(params) else None)
 
 
 def run_training(model, params, device):
@@ -102,7 +122,8 @@ def run_training(model, params, device):
     best_acc = -1.0
     best_weights = None
 
-    label = "PGD adversarial" if params.training.adv_train else "standard"
+    attack = params.training.train_attack
+    label = f"{attack} adversarial" if adversarial(params) else "clean"
     print(
         f"Optimizer: {params.training.optimizer}  lr={params.training.learning_rate}"
         f"  weight_decay={params.training.weight_decay}  l1={params.training.l1}"
@@ -117,11 +138,7 @@ def run_training(model, params, device):
         print(f"  Train loss: {tr_loss:.4f}  acc: {tr_acc:.4f}")
         print(
             f"  Val   acc: {val_acc:.4f}"
-            + (
-                f"  PGD-{params.training.train_steps} acc: {val_rob:.4f}"
-                if val_rob is not None
-                else ""
-            )
+            + (f"  {attack} acc: {val_rob:.4f}" if val_rob is not None else "")
         )
 
         score = val_rob if val_rob is not None else val_acc

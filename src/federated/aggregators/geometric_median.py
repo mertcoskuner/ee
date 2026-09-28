@@ -2,6 +2,8 @@
 
 import torch
 
+from .registry import AGGREGATORS
+
 
 class GeometricMedian:
     """Approximate the weighted geometric median with smoothed Weiszfeld steps."""
@@ -22,3 +24,9 @@ class GeometricMedian:
             betas = alphas / dist
             z = (stacked * betas[:, None]).sum(0) / betas.sum()
         return z
+
+
+@AGGREGATORS.register("geometric_median", rank=8)
+def build_geometric_median(fl, f):
+    """Build the smoothed-Weiszfeld geometric median."""
+    return GeometricMedian(fl.gm_iterations)

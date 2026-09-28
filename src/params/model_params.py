@@ -2,32 +2,29 @@
 
 from dataclasses import dataclass
 
+from models import MODELS
+
+from src.utils.helper_params import option
+
 
 @dataclass
 class ModelParams:
-    """Store the architecture, its sizes, checkpoint paths, and output tag."""
+    """Model: architecture, sizes, and derived checkpoint names."""
 
-    model: str = "cnn"
-    num_classes: int = 10
-    dropout: float = 0.1
-    hidden_sizes: tuple[int, ...] = (512, 256)
-    patch_size: int = 7
-    dim: int = 64
-    depth: int = 2
-    heads: int = 4
-    mlp_dim: int = 128
-    save_path: str = "best_cnn.pth"
-    weights: str = "best_cnn.pth"
-    tag: str = "best_cnn"
-
-
-def get_model_params(args) -> ModelParams:
-    """Name the checkpoint after the model and the training regime."""
-    tag = f"best_adv_{args.model}" if args.adv_train else f"best_{args.model}"
-    return ModelParams(
-        model=args.model,
-        dropout=args.dropout,
-        save_path=f"{tag}.pth",
-        weights=f"{tag}.pth",
-        tag=tag,
+    model: list[str] = option(
+        help="architecture(s) from models/",
+        choices=MODELS.names,
+        allow_all=True,
+        default_factory=lambda: ["cnn"],
     )
+    dropout: float = option(0.1, "dropout rate of MLP and Transformer", ge=0, lt=1)
+    hidden_sizes: tuple[int, ...] = option((512, 256), "MLP hidden layer sizes", gt=0)
+    patch_size: int = option(7, "Transformer patch size (divides 28)", gt=0)
+    dim: int = option(64, "Transformer embedding size", gt=0)
+    depth: int = option(2, "Transformer encoder layers", gt=0)
+    heads: int = option(4, "Transformer attention heads", gt=0)
+    mlp_dim: int = option(128, "Transformer feed-forward size", gt=0)
+    num_classes: int = option(10, cli=False)
+    save_path: str = option("best_cnn.pth", cli=False)
+    weights: str = option("best_cnn.pth", cli=False)
+    tag: str = option("best_cnn", cli=False)

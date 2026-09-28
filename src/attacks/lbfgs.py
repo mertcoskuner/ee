@@ -5,6 +5,8 @@ import torch
 import torch.nn.functional as F
 from scipy.optimize import minimize
 
+from .registry import ATTACKS
+
 
 def most_likely_wrong_class(model, x, y):
     """Return, per example, the highest-scoring class other than y."""
@@ -67,3 +69,15 @@ def lbfgs(model, x, y, c=1.0, search_steps=5, max_iter=20, target=None):
         hi[~success] = c_now[~success]
         c_now = np.where(np.isinf(hi), c_now * 10, (lo + hi) / 2)
     return best.detach()
+
+
+@ATTACKS.register(
+    "lbfgs",
+    rank=4,
+    label=lambda a: f"L-BFGS (c={a.lbfgs_c}, {a.search_steps} searches)",
+)
+def run_lbfgs(model, x, y, a):
+    """Run the L-BFGS attack with the configured search settings."""
+    return lbfgs(
+        model, x, y, c=a.lbfgs_c, search_steps=a.search_steps, max_iter=a.lbfgs_iters
+    )

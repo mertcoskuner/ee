@@ -34,6 +34,18 @@ def build_server_optimizer(model, fl):
     raise ValueError(f"Unknown server optimizer: {fl.server_opt}")
 
 
+def assumed_attackers(fl):
+    """Return how many Byzantine clients robust rules assume.
+
+    Use fl.assumed_byzantine when given, otherwise the configured
+    byzantine_ratio (also for the "none" attack, so every attack in a sweep
+    faces an identically configured rule).
+    """
+    if fl.assumed_byzantine is not None:
+        return fl.assumed_byzantine
+    return round(fl.byzantine_ratio * fl.clients)
+
+
 class Server:
     """Run federated rounds over benign and Byzantine clients.
 
@@ -52,10 +64,9 @@ class Server:
         self.fl = params.federated
         self.device = device
         self.generator = torch.Generator().manual_seed(params.run.seed)
-        f = self.fl.assumed_byzantine
-        if f is None:
-            f = num_byzantine
-        self.aggregator = build_aggregator(self.fl, f, self.generator)
+        self.aggregator = build_aggregator(
+            self.fl, assumed_attackers(self.fl), self.generator
+        )
         self.attack = build_attack(self.fl)
         self.optimizer = build_server_optimizer(model, self.fl)
         self.control = None

@@ -3,6 +3,8 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .registry import MODELS
+
 
 class MNIST_CNN(nn.Module):
     """Classify MNIST images with two conv/pool stages and two dense layers.
@@ -30,3 +32,9 @@ class MNIST_CNN(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
+
+
+@MODELS.register("cnn", rank=1, convolutional=True)
+def build_cnn(p):
+    """Build MNIST_CNN from model parameters."""
+    return MNIST_CNN(num_classes=p.num_classes)

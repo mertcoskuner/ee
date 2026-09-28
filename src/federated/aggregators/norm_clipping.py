@@ -2,6 +2,8 @@
 
 import torch
 
+from .registry import AGGREGATORS
+
 
 class NormClipping:
     """Scale each update to norm at most tau, then take the weighted mean.
@@ -22,3 +24,9 @@ class NormClipping:
         clipped = stacked * (tau / norms.clamp(min=1e-12)).clamp(max=1)[:, None]
         w = torch.tensor(weights, dtype=stacked.dtype, device=stacked.device)
         return (clipped * w[:, None]).sum(0) / w.sum()
+
+
+@AGGREGATORS.register("norm_clipping", rank=9)
+def build_norm_clipping(fl, f):
+    """Build norm clipping with a fixed or median-norm threshold."""
+    return NormClipping(fl.clip_norm)

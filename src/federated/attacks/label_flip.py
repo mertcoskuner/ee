@@ -2,6 +2,8 @@
 
 from src.federated.client import Client
 
+from .registry import FL_ATTACKS
+
 
 class LabelFlipClient(Client):
     """Client that trains on labels mapped y -> num_classes - 1 - y."""
@@ -16,3 +18,9 @@ class LabelFlipClient(Client):
     def labels(self, y):
         """Return flipped labels num_classes - 1 - y."""
         return self.num_classes - 1 - y
+
+
+@FL_ATTACKS.register("label_flip", rank=1, client_class=LabelFlipClient)
+def build_label_flip(fl):
+    """Return None: label flipping happens in LabelFlipClient's training."""
+    return None

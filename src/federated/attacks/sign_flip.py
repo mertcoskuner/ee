@@ -2,6 +2,8 @@
 
 import torch
 
+from .registry import FL_ATTACKS
+
 
 class SignFlip:
     """Send -scale times the benign mean update."""
@@ -16,3 +18,9 @@ class SignFlip:
         """Return one malicious update per Byzantine client."""
         update = -self.scale * torch.stack(benign).mean(0)
         return [update.clone() for _ in range(num_byzantine)]
+
+
+@FL_ATTACKS.register("sign_flip", rank=4)
+def build_sign_flip(fl):
+    """Build the sign-flipping attack with the configured scale."""
+    return SignFlip(fl.sign_flip_scale)

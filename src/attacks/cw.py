@@ -2,6 +2,8 @@
 
 import torch
 
+from .registry import ATTACKS
+
 
 def cw_l2(model, x, y, c=1.0, kappa=0.0, steps=100, lr=0.01, search_steps=5):
     """Return Carlini-Wagner L2 adversarial examples, or x where it fails.
@@ -45,3 +47,22 @@ def cw_l2(model, x, y, c=1.0, kappa=0.0, steps=100, lr=0.01, search_steps=5):
         lo[~success] = torch.maximum(lo[~success], c_now[~success])
         c_now = torch.where(torch.isinf(hi), c_now * 10, (lo + hi) / 2)
     return best.detach()
+
+
+@ATTACKS.register(
+    "cw",
+    rank=5,
+    label=lambda a: f"CW-l2 (c={a.cw_c}, kappa={a.cw_kappa}, {a.cw_steps} steps)",
+)
+def run_cw(model, x, y, a):
+    """Run the Carlini-Wagner L2 attack with the configured settings."""
+    return cw_l2(
+        model,
+        x,
+        y,
+        c=a.cw_c,
+        kappa=a.cw_kappa,
+        steps=a.cw_steps,
+        lr=a.cw_lr,
+        search_steps=a.search_steps,
+    )
