@@ -12,7 +12,7 @@ from src.utils.helper_eval import (
 )
 from src.utils.helper_model import load_reference, load_surrogate, load_weights
 from src.utils.helper_plot import save_json
-from src.utils.helper_privacy import training_epsilon
+from src.utils.helper_privacy import checkpoint_budget
 
 
 def evaluate_attacks(model, params, device, reference_clean=None, save=True):
@@ -29,7 +29,7 @@ def evaluate_attacks(model, params, device, reference_clean=None, save=True):
       images the attack turns wrong;
     - "backdoor_asr": for a backdoored model, the share of non-target images
       the trigger sends to the target class;
-    - "dp_epsilon": the DP-SGD privacy budget of a model trained with --dp;
+    - "dp_epsilon": the privacy budget a DP-SGD checkpoint spent in training;
     - "mia_auc" and "mia_advantage": with --mia, how well a loss-threshold
       membership inference attack tells training images from test images.
     With --surrogate_model the attacks are crafted on the surrogate and
@@ -79,12 +79,10 @@ def evaluate_attacks(model, params, device, reference_clean=None, save=True):
             f"  Backdoor {params.backdoor.backdoor} -> class {target}: "
             f"attack success rate {asr:.4f}"
         )
-    if params.privacy.dp:
-        results["dp_epsilon"] = training_epsilon(params)
-        print(
-            f"  DP-SGD privacy: epsilon {results['dp_epsilon']:.3f} "
-            f"(delta {params.privacy.dp_delta})"
-        )
+    budget = checkpoint_budget(params.model.weights)
+    if budget is not None:
+        results["dp_epsilon"], delta = budget
+        print(f"  DP-SGD privacy: epsilon {results['dp_epsilon']:.3f} (delta {delta})")
     if params.privacy.mia:
         n = params.privacy.mia_samples
         members = training_tensors(params, n)

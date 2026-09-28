@@ -10,7 +10,7 @@ from src.utils.helper_data import get_loaders, load_mnist_tensors
 from src.utils.helper_eval import clean_and_robust_accuracy
 from src.utils.helper_optim import build_optimizer
 from src.utils.helper_plot import plot_training_curve, save_json
-from src.utils.helper_privacy import dp_loader, training_epsilon
+from src.utils.helper_privacy import dp_loader, private_checkpoint, training_epsilon
 from src.utils.helper_regularization import EarlyStopping, l1_penalty
 from src.utils.helper_training import adversarial, adversarial_batch
 
@@ -171,19 +171,22 @@ def run_training(model, params, device):
             curve["test_robust"].append(robust)
             print(f"  Test  acc: {clean:.4f}  robust acc: {robust:.4f}")
 
-        score = val_rob if val_rob is not None else val_acc
-        if score > best_acc:
-            best_acc = score
-            best_weights = copy.deepcopy(model.state_dict())
-            torch.save(best_weights, params.model.save_path)
-            print(
-                f"  Saved best model ({params.model.save_path}, "
-                f"score={best_acc:.4f})"
-            )
         if private:
             eps = training_epsilon(params, epoch)
             print(
                 f"  Privacy spent: epsilon {eps:.3f} (delta {params.privacy.dp_delta})"
+            )
+        score = val_rob if val_rob is not None else val_acc
+        if score > best_acc:
+            best_acc = score
+            best_weights = copy.deepcopy(model.state_dict())
+            state = best_weights
+            if private:
+                state = private_checkpoint(best_weights, eps, params)
+            torch.save(state, params.model.save_path)
+            print(
+                f"  Saved best model ({params.model.save_path}, "
+                f"score={best_acc:.4f})"
             )
         if stopper.step(score):
             print(f"  Early stopping: no improvement for {stopper.patience} epochs")

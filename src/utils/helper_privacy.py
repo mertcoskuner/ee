@@ -25,6 +25,28 @@ def training_epsilon(params, epochs=None):
     return dp_sgd_epsilon(q, p.dp_noise, steps, p.dp_delta)
 
 
+def private_checkpoint(state_dict, epsilon, params):
+    """Return a DP-SGD checkpoint: the weights and the budget they spent."""
+    return {
+        "state_dict": state_dict,
+        "dp_epsilon": epsilon,
+        "dp_delta": params.privacy.dp_delta,
+    }
+
+
+def checkpoint_budget(path):
+    """Return the (epsilon, delta) stored in a DP-SGD checkpoint, or None.
+
+    The budget is recorded at training time, so it reflects the epochs,
+    batch size, and training size actually used, whatever the evaluation
+    command's options are.
+    """
+    state = torch.load(path, map_location="cpu")
+    if "dp_epsilon" not in state:
+        return None
+    return state["dp_epsilon"], state["dp_delta"]
+
+
 def federated_epsilon(fl):
     """Return the epsilon of a DP federated run, or None without DP.
 

@@ -19,8 +19,10 @@ def load_weights(model, params, device):
     """Load the selected checkpoint and prepare the model for evaluation.
 
     Map weights to device, disable parameter gradients, and return the
-    model in evaluation mode. Input gradients remain available to
-    attacks. Exit with a hint when the checkpoint has not been trained.
+    model in evaluation mode. Input gradients remain available to attacks.
+    DP-SGD checkpoints keep the weights under "state_dict" next to their
+    privacy budget. Exit with a hint when the checkpoint has not been
+    trained.
     """
     if not os.path.exists(params.model.weights):
         raise SystemExit(
@@ -28,7 +30,8 @@ def load_weights(model, params, device):
             "with --mode train (or --mode both) and the same --model, --optimizer, "
             "--train_attack, --backdoor, --dp and --checkpoint_dir options."
         )
-    model.load_state_dict(torch.load(params.model.weights, map_location=device))
+    state = torch.load(params.model.weights, map_location=device)
+    model.load_state_dict(state.get("state_dict", state))
     model.requires_grad_(False)
     return model.eval()
 
