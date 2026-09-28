@@ -3,7 +3,7 @@ source "$(dirname "$0")/common.sh"
 OUT="$RESULTS/week03_adversarial_attacks"
 
 section "Week 3: Adversarial Attacks"
-ensure best_cnn_adam.pth --model cnn --optimizer adam
+ensure "$CKPT"/best_cnn_adam.pth --model cnn --optimizer adam
 
 section "Generating adversarial samples: FGSM, PGD (L-inf and L2), L-BFGS"
 run --mode test --model cnn --attack fgsm pgd_linf pgd_l2 lbfgs --steps "$STEPS" --num_samples "$NUM" \

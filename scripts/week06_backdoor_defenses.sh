@@ -5,9 +5,9 @@ DEFENSE=(--nc_steps "$NC_STEPS" --ls_samples "$LS_SAMPLES" --num_samples "$NUM")
 
 section "Week 6: Defense Against Backdoor Attacks"
 for trigger in badnets blend dynamic; do
-    ensure "best_cnn_adam_bd-$trigger.pth" --model cnn --backdoor "$trigger"
+    ensure "$CKPT/best_cnn_adam_bd-$trigger.pth" --model cnn --backdoor "$trigger"
 done
-ensure best_cnn_adam.pth --model cnn --optimizer adam
+ensure "$CKPT"/best_cnn_adam.pth --model cnn --optimizer adam
 
 section "Neural Cleanse: reverse-engineered triggers and anomaly index"
 run --mode defense --model cnn --backdoor none badnets blend dynamic --defense neural_cleanse "${DEFENSE[@]}" \

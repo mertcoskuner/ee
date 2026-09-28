@@ -17,12 +17,13 @@ MODES = [
 
 @dataclass
 class RunParams:
-    """Store the execution mode, seed, device, and results directory."""
+    """Store the execution mode, seed, device, and output directories."""
 
     mode: str = "both"
     seed: int = 0
     device: str = "auto"
     results_dir: str = "results"
+    checkpoint_dir: str = "checkpoints"
 
 
 def get_run_params(args) -> RunParams:
@@ -32,4 +33,5 @@ def get_run_params(args) -> RunParams:
         seed=args.seed,
         device=args.device,
         results_dir=args.results_dir,
+        checkpoint_dir=args.checkpoint_dir,
     )

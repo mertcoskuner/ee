@@ -44,6 +44,7 @@ def args_parser(argv=None):
         help="auto (CUDA, then MPS, then CPU) or a torch device such as cuda:1",
     )
     parser.add_argument("--results_dir", default=RunParams.results_dir)
+    parser.add_argument("--checkpoint_dir", default=RunParams.checkpoint_dir)
 
     parser.add_argument(
         "--model", nargs="+", choices=MODELS.names() + ["all"], default=["cnn"]

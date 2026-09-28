@@ -75,7 +75,7 @@ main.py                     entry point: expands combinations and dispatches to 
    (`src/utils/helper_experiments.py`) expands the list-valued central options `--model × --optimizer ×
    --train_attack × --backdoor` into one run each. Each run gets its own checkpoint name.
 4. **Dispatch.** `main.py` builds a fresh, seeded model per run and calls the runner of `--mode`. `test` and `both`
-   runs are collected into one summary table, which also goes to `results/experiment_summary.json`.
+   runs with more than one combination end with a summary table.
 5. **Components.** Runners never branch on names. They look components up in a registry:
    - `run_attack` → `ATTACKS`
    - `run_defense` → `DEFENSES`
@@ -150,12 +150,32 @@ A new hyperparameter takes three steps:
   curve.
 - **Adversarial training:** it uses the chosen attack with `--train_steps` iterations, and PGD-ℓ∞ steps by
   `--train_alpha`. With the defaults this is Madry et al.'s 40 steps of 0.01 at ε = 0.3.
-- **Checkpoint names:** `best_<model>_<optimizer>.pth`, with `_adv-<attack>` for adversarial training and
-  `_bd-<trigger>` for backdoored training. Evaluation modes load the checkpoint matching the same options. Fine-pruning saves
-  `<tag>_fine_pruned.pth`.
+- **Checkpoint names:** `checkpoints/best_<model>_<optimizer>.pth` (`--checkpoint_dir`), with `_adv-<attack>` for
+  adversarial training and `_bd-<trigger>` for backdoored training. Evaluation modes load the checkpoint matching the
+  same options. Fine-pruning adds `_fine_pruned`, and federated runs save `fl_<model>_<combination>.pth`.
 - **Infeasible federated combinations** are skipped with the reason and listed in the summary. Krum needs n ≥ 2f + 2
   and Bulyan needs n ≥ 4f + 3.
-- **Outputs:** figures and JSON reports go to `--results_dir` (default `results/`).
+- **Outputs:** see [Outputs](#outputs).
+
+## Outputs
+
+MNIST is downloaded to `--data_dir` (default `data/`) on the first run. Checkpoints go to `--checkpoint_dir`
+(default `checkpoints/`), and results go to `--results_dir` (default `results/`). Each run writes only these files
+(PNG figures, JSON reports with values rounded to 4 digits):
+
+| Mode | Files in the results directory |
+|------|-------------------------------|
+| `test`, `both` | `test_<tag>.json`: clean accuracy, clean accuracy drop, robust accuracy and attack success rate per attack, backdoor attack success rate, per-class accuracies (`test_<tag>_from-<surrogate>.json` for transfer attacks) |
+| `train` with `--track_test` | `training_curve_<tag>.json` and `.png` |
+| `visualize` | `adv_examples_<tag>.png` |
+| `tsne` | `tsne_<tag>.json` and `.png` |
+| `gradcam` | `gradcam_<tag>.png` |
+| `geometry` | `geometry_<tag>.json` and `.png` |
+| `defense` | `defense_<tag>.json` (every defense's report and the defended model's metrics), `neural_cleanse_<tag>.png`, `latent_separability_<tag>.png` |
+| `federated` | `federated_<model>.json` (settings, curves and final accuracy of every combination), `federated_<model>.png` (all accuracy curves), `label_shares_<partition>.png` |
+
+The console shows one line per metric. When one command covers several combinations, it ends with a summary table:
+test metrics per checkpoint, or the final accuracy per federated combination.
 
 ## Topics
 

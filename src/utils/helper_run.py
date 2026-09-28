@@ -1,5 +1,6 @@
-"""Seed random generators, configure cuDNN determinism, and pick the device."""
+"""Seed random generators, pick the device, and name checkpoint files."""
 
+import os
 import random
 
 import numpy as np
@@ -25,3 +26,9 @@ def resolve_device(name):
     if torch.backends.mps.is_available():
         return torch.device("mps")
     return torch.device("cpu")
+
+
+def checkpoint_path(params, stem):
+    """Return checkpoint_dir/stem.pth, creating the checkpoint directory."""
+    os.makedirs(params.run.checkpoint_dir, exist_ok=True)
+    return os.path.join(params.run.checkpoint_dir, f"{stem}.pth")

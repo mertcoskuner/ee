@@ -7,6 +7,7 @@ import torch
 
 from models import MODELS
 from src.utils.helper_experiments import checkpoint_tag
+from src.utils.helper_run import checkpoint_path
 
 
 def build_model(params):
@@ -40,7 +41,7 @@ def load_surrogate(params, device):
         a.surrogate_model, a.surrogate_optimizer, a.surrogate_train_attack
     )
     model_params = dataclasses.replace(
-        params.model, model=a.surrogate_model, weights=f"{tag}.pth"
+        params.model, model=a.surrogate_model, weights=checkpoint_path(params, tag)
     )
     surrogate_params = dataclasses.replace(params, model=model_params)
     model = MODELS.get(a.surrogate_model)(model_params).to(device)
@@ -58,7 +59,7 @@ def load_reference(params, device):
     t = params.training
     if t.train_attack == "none" and params.backdoor.backdoor == "none":
         return None, None
-    path = f"{checkpoint_tag(params.model.model, t.optimizer)}.pth"
+    path = checkpoint_path(params, checkpoint_tag(params.model.model, t.optimizer))
     if not os.path.exists(path):
         return None, None
     reference_params = dataclasses.replace(

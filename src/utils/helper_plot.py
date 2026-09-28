@@ -9,24 +9,31 @@ ALERT, INK = "#e34948", "#0b0b0b"
 
 
 def save_fig(fig, params, name):
-    """Save a figure as PDF and PNG in results_dir, then close it."""
+    """Save a figure as results_dir/name.png, then close it."""
     os.makedirs(params.run.results_dir, exist_ok=True)
-    for ext in ("pdf", "png"):
-        fig.savefig(
-            os.path.join(params.run.results_dir, f"{name}.{ext}"),
-            dpi=200,
-            bbox_inches="tight",
-        )
+    path = os.path.join(params.run.results_dir, f"{name}.png")
+    fig.savefig(path, dpi=200, bbox_inches="tight")
     plt.close(fig)
-    print(f"  saved {params.run.results_dir}/{name}.pdf|png")
+    print(f"  saved {path}")
+
+
+def rounded(value, digits=4):
+    """Return value with every float, also inside lists and dicts, rounded."""
+    if isinstance(value, float):
+        return round(value, digits)
+    if isinstance(value, dict):
+        return {k: rounded(v, digits) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [rounded(v, digits) for v in value]
+    return value
 
 
 def save_json(report, params, name):
-    """Write report as indented JSON to results_dir/name.json."""
+    """Write report, floats rounded to 4 digits, to results_dir/name.json."""
     os.makedirs(params.run.results_dir, exist_ok=True)
     path = os.path.join(params.run.results_dir, f"{name}.json")
     with open(path, "w") as f:
-        json.dump(report, f, indent=2)
+        json.dump(rounded(report), f, indent=2)
     print(f"  saved {path}")
 
 
@@ -92,42 +99,49 @@ def plot_training_curve(curve, params):
     save_fig(fig, params, f"training_curve_{params.model.tag}")
 
 
-def plot_federated_run(history, counts, params, tag):
-    """Save one federated run's accuracy curve and per-client label shares."""
-    fig, (ax_acc, ax_lab) = plt.subplots(1, 2, figsize=(10.5, 3.6))
-    ax_acc.plot(
-        history["round"], [100 * a for a in history["test_acc"]], color="#2a78d6"
-    )
-    ax_acc.set_xlabel("round")
-    ax_acc.set_ylabel("test accuracy (%)")
-    ax_acc.set_ylim(0, 100)
-    ax_acc.grid(alpha=0.3)
-    ax_acc.set_title(tag, fontsize=8)
+def plot_federated_curves(runs, params):
+    """Save the test accuracy curve of every federated run in one figure."""
+    fig, ax = plt.subplots(figsize=(7.5, 4.2))
+    for run in runs:
+        history = run["history"]
+        ax.plot(
+            history["round"], [100 * a for a in history["test_acc"]], label=run["tag"]
+        )
+    ax.set_xlabel("round")
+    ax.set_ylabel("test accuracy (%)")
+    ax.set_ylim(0, 100)
+    ax.grid(alpha=0.3)
+    ax.legend(frameon=False, fontsize=6, loc="lower right")
+    save_fig(fig, params, f"federated_{params.model.model}")
+
+
+def plot_label_shares(counts, params, partition):
+    """Save the per-client label distribution of one data partition."""
+    fig, ax = plt.subplots(figsize=(6, 3.2))
     shares = counts / counts.sum(1, keepdims=True)
-    ax_lab.imshow(shares.T, aspect="auto", cmap="Blues", vmin=0, vmax=1)
-    ax_lab.set_xlabel("client")
-    ax_lab.set_ylabel("class")
-    ax_lab.set_title(f"label shares ({params.federated.partition})", fontsize=9)
-    fig.tight_layout()
-    save_fig(fig, params, f"federated_{params.model.model}_{tag}")
+    ax.imshow(shares.T, aspect="auto", cmap="Blues", vmin=0, vmax=1)
+    ax.set_xlabel("client")
+    ax.set_ylabel("class")
+    ax.set_title(f"label shares per client ({partition})", fontsize=9)
+    save_fig(fig, params, f"label_shares_{partition}")
 
 
-def print_federated_summary(summary, fields, params):
-    """Print and save the final accuracy of every federated combination."""
+def print_federated_summary(summary, fields):
+    """Print the final accuracy of every federated combination."""
     print("\n=== Federated summary ===")
     print("  " + "  ".join(f"{n:>18s}" for n in fields) + "  final acc")
     for row in summary:
         acc = "skipped" if row["final_acc"] is None else f"{row['final_acc']:.4f}"
         print("  " + "  ".join(f"{row[n]:>18s}" for n in fields) + f"  {acc}")
-    save_json(summary, params, f"federated_summary_{params.model.model}")
 
 
 def print_test_summary(rows, params):
-    """Print and save a table of test metrics, one row per combination.
+    """Print a table of test metrics, one row per combination.
 
     Columns are clean accuracy, its drop against the clean reference,
     robust accuracy and attack success rate (_asr) per attack, and the
-    backdoor attack success rate.
+    backdoor attack success rate. Each row's metrics are already saved in
+    its test_<tag>.json file.
     """
     seen = list(dict.fromkeys(k for _, res in rows for k in res))
     first = [c for c in ("clean", "clean_drop") if c in seen]
@@ -144,6 +158,3 @@ def print_test_summary(rows, params):
         )
         cells = (res.get(c, float("nan")) for c in columns)
         print(line + "".join(f"{v:>{w}.4f}" for v, w in zip(cells, widths)))
-    save_json(
-        [{**run, "metrics": res} for run, res in rows], params, "experiment_summary"
-    )

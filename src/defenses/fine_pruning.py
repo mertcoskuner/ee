@@ -6,6 +6,7 @@ from torch import nn
 
 from src.utils.helper_data import get_loaders, loader_tensors
 from src.utils.helper_eval import accuracy, predict
+from src.utils.helper_run import checkpoint_path
 
 from .registry import DEFENSES
 
@@ -156,7 +157,7 @@ def run_fine_pruning(model, params, device):
         params.training.learning_rate,
         device,
     )
-    path = f"{params.model.tag}_fine_pruned.pth"
+    path = checkpoint_path(params, f"{params.model.tag}_fine_pruned")
     torch.save(model.state_dict(), path)
     print("\n=== Fine-pruning ===")
     print(f"  Pruned {res['pruned']}/{res['units']} {res['layer']} units")

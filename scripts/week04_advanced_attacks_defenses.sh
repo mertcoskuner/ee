@@ -3,9 +3,9 @@ source "$(dirname "$0")/common.sh"
 OUT="$RESULTS/week04_advanced_attacks_defenses"
 
 section "Week 4: Advanced Adversarial Attacks and Defense Methods"
-ensure best_cnn_adam.pth --model cnn --optimizer adam
-ensure best_mlp_adam.pth --model mlp --optimizer adam
-ensure best_transformer_adam.pth --model transformer --optimizer adam
+ensure "$CKPT"/best_cnn_adam.pth --model cnn --optimizer adam
+ensure "$CKPT"/best_mlp_adam.pth --model mlp --optimizer adam
+ensure "$CKPT"/best_transformer_adam.pth --model transformer --optimizer adam
 
 section "Carlini-Wagner L2 attack"
 run --mode test --model cnn --attack cw --cw_steps "$CW_STEPS" --num_samples "$AA_NUM" --results_dir "$OUT/cw"

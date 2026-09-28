@@ -36,7 +36,7 @@ def run_defense(model, params, device):
             params, attack=dataclasses.replace(params.attack, attack=["none"])
         )
     report["after_defense"] = evaluate_attacks(
-        model, params, device, reference_clean=before
+        model, params, device, reference_clean=before, save=False
     )
     save_json(report, params, f"defense_{params.model.tag}")
     return report

@@ -1,7 +1,6 @@
 data/
 results/
+checkpoints/
 __pycache__/
-best_*
 .venv/
 /tests/
-fl_*.pth

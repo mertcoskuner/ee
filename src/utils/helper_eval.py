@@ -98,11 +98,6 @@ def clean_and_robust_accuracy(model, x, y, attack_name, params, device):
     return clean, robust
 
 
-def print_per_class(preds, y, num_classes):
-    """Print the accuracy of preds on every class."""
-    for c in range(num_classes):
-        mask = y == c
-        print(
-            f"  Class {c}: {preds[mask].eq(c).float().mean().item():.4f}  "
-            f"({preds[mask].eq(c).sum().item()}/{mask.sum().item()})"
-        )
+def per_class_accuracy(preds, y, num_classes=10):
+    """Return the accuracy of preds on every class as a list."""
+    return [preds[y == c].eq(c).float().mean().item() for c in range(num_classes)]

@@ -15,6 +15,7 @@ from src.federated.aggregators import AGGREGATORS
 from src.federated.attacks import FL_ATTACKS
 from src.params.federated_params import SWEEP_FIELDS
 from src.params.training_params import OPTIMIZERS
+from src.utils.helper_run import checkpoint_path
 
 FL_REGISTRIES = {"aggregator": AGGREGATORS, "attack": FL_ATTACKS}
 
@@ -53,6 +54,7 @@ def central_runs(params):
         models, optimizers, attacks, backdoors
     ):
         tag = checkpoint_tag(model, optimizer, attack, backdoor)
+        path = checkpoint_path(params, tag)
         run = {
             "model": model,
             "optimizer": optimizer,
@@ -66,8 +68,8 @@ def central_runs(params):
                     params.model,
                     model=model,
                     tag=tag,
-                    save_path=f"{tag}.pth",
-                    weights=f"{tag}.pth",
+                    save_path=path,
+                    weights=path,
                 ),
                 training=dataclasses.replace(
                     params.training, optimizer=optimizer, train_attack=attack

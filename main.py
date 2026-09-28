@@ -57,7 +57,7 @@ def main():
         result = RUNNERS[run_params.run.mode](model, run_params, device)
         if run_params.run.mode in ("test", "both"):
             rows.append((run, result))
-    if rows:
+    if len(rows) > 1:
         print_test_summary(rows, params)
 
 
