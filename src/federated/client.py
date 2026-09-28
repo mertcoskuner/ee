@@ -13,9 +13,7 @@ class Client:
     local selects the local objective: "plain" (FedAvg), "fedprox" (adds
     mu / 2 * ||w - w_global||^2), "scaffold" (corrects every gradient with
     the control variates c - c_i), or "kd" (adds a distillation loss
-    towards the frozen global model's softened predictions). With local
-    differential privacy (fl.dp == "local") the client clips its update to
-    dp_clip and adds Gaussian noise before sending it.
+    towards the frozen global model's softened predictions).
     """
 
     def __init__(self, cid, x, y, params, device):
@@ -89,8 +87,6 @@ class Client:
         self.last_loss = sum(losses) / len(losses)
         end = parameters_to_vector(model.parameters()).detach()
         delta = start - end
-        if fl.dp == "local":
-            delta = self.privatize(delta, generator)
         control_delta = None
         if fl.local == "scaffold":
             new_control = (
@@ -99,12 +95,3 @@ class Client:
             control_delta = new_control - self.control
             self.control = new_control
         return delta, control_delta
-
-    def privatize(self, update, generator):
-        """Clip update to norm dp_clip and add N(0, (dp_noise * dp_clip)^2) noise."""
-        fl = self.fl
-        update = update * (fl.dp_clip / update.norm().clamp(min=1e-12)).clamp(max=1)
-        noise = (
-            torch.randn(update.shape, generator=generator) * fl.dp_noise * fl.dp_clip
-        )
-        return update + noise.to(update.device)

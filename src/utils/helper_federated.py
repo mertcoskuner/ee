@@ -49,6 +49,5 @@ def describe(fl):
     return (
         f"partition {fl.partition} | local {fl.local} | server {fl.server_opt} | "
         f"aggregator {fl.aggregator}{group} | attack {fl.attack} "
-        f"({num_byzantine(fl)}/{fl.clients} Byzantine, f={assumed_attackers(fl)}) | "
-        f"dp {fl.dp}"
+        f"({num_byzantine(fl)}/{fl.clients} Byzantine, f={assumed_attackers(fl)})"
     )

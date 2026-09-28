@@ -10,8 +10,6 @@ A plug-and-play MNIST library for adversarial machine learning:
   separability analysis.
 - **Federated learning**: IID and non-IID data, local drift control and regularization, accelerated server
   optimizers, two-layer aggregation, Byzantine attacks and robust aggregation.
-- **Differential privacy**: Laplace, Gaussian and randomized-response mechanisms, composition and subsampling
-  accounting (RDP), DP-SGD, membership inference, and central and local DP in federated learning.
 
 Every attack, defense, model and aggregation rule is a registered component, and list-valued options run every
 feasible combination in one command. `scripts/` holds one runnable script per course week (see
@@ -35,22 +33,20 @@ python main.py --mode federated --fl_attack none alie ipm --fl_byzantine_ratio 0
 ```
 main.py                     entry point: expands combinations and dispatches to a mode runner
 ├── config/args.py          args_parser(): every CLI option and its validation
-├── train.py                clean, adversarial or DP-SGD training     (--mode train / both)
+├── train.py                clean or adversarial training            (--mode train / both)
 ├── test.py                 clean and attacked accuracy, per class   (--mode test / both)
 ├── visualize.py            adversarial examples, t-SNE               (--mode visualize / tsne)
 ├── gradcam.py              Grad-CAM on clean vs. adversarial digits  (--mode gradcam)
 ├── geometry.py             geometry of adversarial perturbations     (--mode geometry)
 ├── defense.py              backdoor defenses (+ attacks afterwards)  (--mode defense)
 ├── federated.py            federated sweeps                          (--mode federated)
-├── privacy.py              DP mechanisms and accounting demos        (--mode dp_mechanisms / dp_accounting)
-├── scripts/                common.sh + week01 … week13 scripts, run_all.sh
+├── scripts/                common.sh + week01 … week10 scripts, run_all.sh
 ├── models/                 CNN.py, MLP.py, Transformer.py      → registry MODELS
 └── src/
     ├── params/             *_params.py: one dataclass and one get_*_params(args) per group
     ├── attacks/            fgsm, pgd_linf, pgd_l2, lbfgs, cw, square, autoattack → registry ATTACKS
     ├── backdoors/          badnets, blend, dynamic triggers + poisoning → registry BACKDOORS
     ├── defenses/           neural_cleanse, latent_separability, fine_pruning → registry DEFENSES
-    ├── privacy/            mechanisms, accounting (composition, subsampling, RDP), DP-SGD, membership inference
     ├── federated/
     │   ├── client.py       local training: plain, FedProx, SCAFFOLD, knowledge distillation
     │   ├── server.py       client sampling, attacks, aggregation, server optimizer
@@ -62,8 +58,7 @@ main.py                     entry point: expands combinations and dispatches to 
                             model (build, checkpoints, surrogate, reference), optimizer, regularization,
                             adversarial training batches, evaluation (accuracy, attack success rate),
                             attack gradients, Grad-CAM, perturbation geometry, federated clients,
-                            privacy (DP-SGD sampling, spent ε), statistics, plots and reports,
-                            seeding and device selection
+                            statistics, plots and reports, seeding and device selection
 ```
 
 ### How a run flows
@@ -74,14 +69,13 @@ main.py                     entry point: expands combinations and dispatches to 
    - Invalid values and incompatible selections are rejected before anything runs. For example, Grad-CAM needs a
      convolutional model, and an FL attack needs at least one Byzantine client.
 2. **Parameters.** Each file in `src/params/` holds one dataclass and its `get_*_params(args)` builder: run, model,
-   data loader, training, attack, backdoor, defense, federated, privacy. `get_params(args)` groups them into
+   data loader, training, attack, backdoor, defense, federated. `get_params(args)` groups them into
    `ExperimentParams`.
 3. **Combinations.** `get_params` builds the typed parameters, and `central_runs`
    (`src/utils/helper_experiments.py`) expands the list-valued central options `--model × --optimizer ×
    --train_attack × --backdoor` into one run each. Each run gets its own checkpoint name.
 4. **Dispatch.** `main.py` builds a fresh, seeded model per run and calls the runner of `--mode`. `test` and `both`
-   runs with more than one combination end with a summary table. `dp_mechanisms` and `dp_accounting` use no model
-   and run once.
+   runs with more than one combination end with a summary table.
 5. **Components.** Runners never branch on names. They look components up in a registry:
    - `run_attack` → `ATTACKS`
    - `run_defense` → `DEFENSES`
@@ -144,9 +138,7 @@ A new hyperparameter takes three steps:
 | `gradcam` | `gradcam.py` | Grad-CAM for each convolutional checkpoint |
 | `geometry` | `geometry.py` | loss/accuracy along gradient vs. random directions, boundary distance, decision map |
 | `defense` | `defense.run_defense` | `--defense` list × optional `--attack` list evaluated on the defended model |
-| `federated` | `federated.run_federated` | `--fl_partition × --fl_local × --fl_server_opt × --fl_aggregator × --fl_attack × --fl_dp` (per `--model`) |
-| `dp_mechanisms` | `privacy.run_dp_mechanisms` | Laplace / Gaussian / randomized response and DP properties for `--dp_epsilons` |
-| `dp_accounting` | `privacy.run_dp_accounting` | ε of DP-SGD under basic, advanced and RDP accounting, with and without subsampling |
+| `federated` | `federated.run_federated` | `--fl_partition × --fl_local × --fl_server_opt × --fl_aggregator × --fl_attack` (per `--model`) |
 
 - **`all`:** `--attack`, `--train_attack`, `--backdoor`, `--defense`, `--model`, `--optimizer`, `--fl_aggregator` and
   `--fl_attack` accept `all`.
@@ -157,14 +149,10 @@ A new hyperparameter takes three steps:
   `--target_class`. Test and defense modes report the trigger's attack success rate (`backdoor_asr`).
 - **Training curves:** `--track_test` records clean and robust test accuracy after every epoch and plots them next to
   the training and validation accuracy (`training_curve_<tag>.png`), which also exposes adversarial overfitting.
-- **Differential privacy:** `--dp` trains with DP-SGD (`--dp_noise`, `--dp_clip`, `--dp_delta`) and reports the
-  privacy budget ε after every epoch and in the test report; the clean accuracy drop is measured against the non-DP
-  checkpoint when it exists. `--mia` adds a membership inference attack to test mode.
-  `--fl_dp central local` adds DP-FedAvg or local DP to federated runs (`--fl_dp_noise`, `--fl_dp_clip`).
 - **Adversarial training:** it uses the chosen attack with `--train_steps` iterations, and PGD-ℓ∞ steps by
   `--train_alpha`. With the defaults this is Madry et al.'s 40 steps of 0.01 at ε = 0.3.
 - **Checkpoint names:** `checkpoints/best_<model>_<optimizer>.pth` (`--checkpoint_dir`), with `_adv-<attack>` for
-  adversarial training, `_bd-<trigger>` for backdoored training and `_dp<noise>` for DP-SGD. Evaluation modes load the
+  adversarial training and `_bd-<trigger>` for backdoored training. Evaluation modes load the
   checkpoint matching the same options. Fine-pruning adds `_fine_pruned`, and federated runs save
   `fl_<model>_<combination>.pth`.
 - **Infeasible federated combinations** are skipped with the reason and listed in the summary. Krum needs n ≥ 2f + 2
@@ -179,16 +167,14 @@ MNIST is downloaded to `--data_dir` (default `data/`) on the first run. Checkpoi
 
 | Mode | Files in the results directory |
 |------|-------------------------------|
-| `test`, `both` | `test_<tag>.json`: clean accuracy, clean accuracy drop, robust accuracy and attack success rate per attack, backdoor attack success rate, DP ε, membership inference AUC and advantage, per-class accuracies (`test_<tag>_from-<surrogate>.json` for transfer attacks) |
+| `test`, `both` | `test_<tag>.json`: clean accuracy, clean accuracy drop, robust accuracy and attack success rate per attack, backdoor attack success rate, per-class accuracies (`test_<tag>_from-<surrogate>.json` for transfer attacks) |
 | `train` with `--track_test` | `training_curve_<tag>.json` and `.png` |
 | `visualize` | `adv_examples_<tag>.png` |
 | `tsne` | `tsne_<tag>.json` and `.png` |
 | `gradcam` | `gradcam_<tag>.png` |
 | `geometry` | `geometry_<tag>.json` and `.png` |
 | `defense` | `defense_<tag>.json` (every defense's report and the defended model's metrics), `neural_cleanse_<tag>.png`, `latent_separability_<tag>.png` |
-| `federated` | `federated_<model>.json` (settings, curves, final accuracy and ε of every combination), `federated_<model>.png` (all accuracy curves), `label_shares_<partition>.png` |
-| `dp_mechanisms` | `dp_mechanisms.json` and `.png` |
-| `dp_accounting` | `dp_accounting.json` and `.png` |
+| `federated` | `federated_<model>.json` (settings, curves and final accuracy of every combination), `federated_<model>.png` (all accuracy curves), `label_shares_<partition>.png` |
 
 The console shows one line per metric. When one command covers several combinations, it ends with a summary table:
 test metrics per checkpoint, or the final accuracy per federated combination.
@@ -230,14 +216,6 @@ test metrics per checkpoint, or the final accuracy per federated combination.
 | Byzantine attacks: label flip, ALIE, IPM, etc. | `src/federated/attacks/` (`--fl_attack`, `--fl_byzantine_ratio`) |
 | Outlier detection and elimination | Krum / Multi-Krum, Bulyan, `outlier_removal` (MAD) |
 | Gradient / model update sanitization | median, trimmed mean, centered clipping, geometric median, norm clipping |
-| Motivation: attacks and DP as a defense | membership inference (`src/privacy/membership.py`, `--mia`) against DP-SGD models |
-| Definition and basic mechanisms of DP | `src/privacy/mechanisms.py` (Laplace, Gaussian, randomized response), `--mode dp_mechanisms` |
-| Basic properties of DP | post-processing, sequential composition, group privacy in `--mode dp_mechanisms` |
-| DP with composition | `src/privacy/accounting.py` (basic, advanced, RDP), `--mode dp_accounting` |
-| DP with sub-sampling | amplification by subsampling and subsampled-Gaussian RDP, `--mode dp_accounting` |
-| Building a DP ML algorithm | DP-SGD (`src/privacy/dp_sgd.py`, `--dp`) |
-| Collaboration under DP, DP in the FL framework | central DP-FedAvg (`--fl_dp central`) |
-| Local DP | randomized response; local DP in FL (`--fl_dp local`) |
 
 ## Method notes
 
@@ -290,26 +268,6 @@ test metrics per checkpoint, or the final accuracy per federated combination.
   - SCAFFOLD's control variate is averaged with the same sample weights as the models. Under strong heterogeneity it
     needs a small local learning rate, for example `--fl_local_lr 0.02` with `--fl_alpha 0.1`.
 
-### Differential privacy
-
-- **Mechanisms.** The Laplace mechanism adds Laplace(Δ/ε) noise (ε-DP). The Gaussian mechanism uses the classic
-  calibration σ = √(2 ln(1.25/δ))·Δ/ε, valid for ε < 1. Randomized response keeps each bit with probability
-  e^ε / (1 + e^ε) (ε-local DP).
-- **Composition.** Advanced composition beats basic composition only over many steps; for a few hundred steps it
-  can be looser. RDP with subsampling is far tighter than both.
-- **Accounting.** The RDP accountant uses the exact integer-order bound for the Poisson-subsampled Gaussian mechanism
-  and the Balle et al. (2020) conversion to (ε, δ). It matches Opacus to four decimals at the same orders.
-- **DP-SGD.** Each example is included in a batch independently with probability `batch_size / training size`
-  (Poisson sampling). Per-example gradients are computed with `torch.func` and clipped to `--dp_clip`. Gaussian noise
-  of standard deviation `--dp_noise · --dp_clip` is added, and the sum is divided by the expected batch size.
-- **Federated DP.**
-  - Central DP (DP-FedAvg): the server clips each update to `--fl_dp_clip`, averages the clients with equal weights,
-    and adds N(0, (σ·S/m)²) noise. ε counts client-level privacy with client sampling rate `--fl_participation`.
-    The noise is calibrated to the mean, so with a robust `--fl_aggregator` the reported ε is only indicative.
-  - Local DP: every honest client clips and noises its own update before sending it. Its ε uses sensitivity 2S over
-    the rounds the client joins.
-  - With a few dozen clients, meaningful ε costs most of the accuracy. Differentially private FL needs many clients.
-
 ### Data
 
 Training holds out 5,000 MNIST training images for validation (`--validation_size`, reproducible with `--seed`), so
@@ -344,6 +302,3 @@ DEVICE=cuda:0 PYTHON=.venv/bin/python bash scripts/week10_byzantine_defenses.sh
 | `week08_data_heterogeneity.sh` | Data Heterogeneity in FL | IID vs. Dirichlet vs. shards; SCAFFOLD; FedProx; two-layer aggregation; knowledge distillation |
 | `week09_byzantine_attacks.sh` | Byzantine Attacks in FL | FedAvg under every attack; label flip / ALIE / IPM vs. trimmed mean; attacker ratio and IPM strength sweeps |
 | `week10_byzantine_defenses.sh` | Defenses Against Byzantine Attacks | outlier elimination (Krum, Multi-Krum, Bulyan, MAD) and sanitization (median, trimmed mean, clipping, geometric median) under every attack; non-IID and bucketing |
-| `week11_differential_privacy.sh` | Differential Privacy | membership inference on a memorizing model vs. its DP-SGD version; mechanisms, post-processing, composition, group privacy |
-| `week12_dp_machine_learning.sh` | DP in Machine Learning | accounting with composition and subsampling; DP-SGD at several noise levels vs. non-private training |
-| `week13_dp_federated.sh` | DP in Federated Learning | no DP vs. central vs. local DP; noise sweeps; client sampling |

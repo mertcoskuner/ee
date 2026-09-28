@@ -2,8 +2,7 @@
 
 from src.attacks import attack_label
 from src.backdoors import attack_success_rate, build_backdoor
-from src.privacy import membership_inference
-from src.utils.helper_data import load_test_set, training_tensors
+from src.utils.helper_data import load_test_set
 from src.utils.helper_eval import (
     accuracy,
     evasion_success_rate,
@@ -12,7 +11,6 @@ from src.utils.helper_eval import (
 )
 from src.utils.helper_model import load_reference, load_surrogate, load_weights
 from src.utils.helper_plot import save_json
-from src.utils.helper_privacy import checkpoint_budget
 
 
 def evaluate_attacks(model, params, device, reference_clean=None, save=True):
@@ -22,16 +20,13 @@ def evaluate_attacks(model, params, device, reference_clean=None, save=True):
     - "clean": clean test accuracy;
     - "clean_drop": reference clean accuracy minus clean accuracy, when a
       reference exists (reference_clean, or the clean checkpoint of the same
-      architecture and optimizer for adversarially trained, backdoored, or DP
+      architecture and optimizer for adversarially trained or backdoored
       models);
     - "<attack>": robust accuracy under each selected attack;
     - "<attack>_asr": attack success rate, the share of correctly classified
       images the attack turns wrong;
     - "backdoor_asr": for a backdoored model, the share of non-target images
       the trigger sends to the target class;
-    - "dp_epsilon": the privacy budget a DP-SGD checkpoint spent in training;
-    - "mia_auc" and "mia_advantage": with --mia, how well a loss-threshold
-      membership inference attack tells training images from test images.
     With --surrogate_model the attacks are crafted on the surrogate and
     transferred (grey- or black-box); otherwise they are white-box. With
     save, the metrics and per-class accuracies go to test_<tag>.json.
@@ -78,19 +73,6 @@ def evaluate_attacks(model, params, device, reference_clean=None, save=True):
         print(
             f"  Backdoor {params.backdoor.backdoor} -> class {target}: "
             f"attack success rate {asr:.4f}"
-        )
-    budget = checkpoint_budget(params.model.weights)
-    if budget is not None:
-        results["dp_epsilon"], delta = budget
-        print(f"  DP-SGD privacy: epsilon {results['dp_epsilon']:.3f} (delta {delta})")
-    if params.privacy.mia:
-        n = params.privacy.mia_samples
-        members = training_tensors(params, n)
-        non_members = (x[:n], y[:n])
-        results.update(membership_inference(model, members, non_members, device))
-        print(
-            f"  Membership inference: AUC {results['mia_auc']:.4f}, "
-            f"advantage {results['mia_advantage']:.4f}"
         )
     if not save:
         return results

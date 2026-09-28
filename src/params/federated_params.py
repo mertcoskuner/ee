@@ -10,8 +10,7 @@ from dataclasses import dataclass, field
 PARTITIONS = ["iid", "dirichlet", "shards"]
 LOCAL_OBJECTIVES = ["plain", "fedprox", "scaffold", "kd"]
 SERVER_OPTIMIZERS = ["sgd", "momentum", "nesterov", "adam"]
-DP_MODES = ["none", "central", "local"]
-SWEEP_FIELDS = ["partition", "local", "server_opt", "aggregator", "attack", "dp"]
+SWEEP_FIELDS = ["partition", "local", "server_opt", "aggregator", "attack"]
 
 
 @dataclass
@@ -53,10 +52,6 @@ class FederatedParams:
     clip_norm: float | None = None
     outlier_threshold: float = 2.0
     eval_every: int = 1
-    dp: list[str] = field(default_factory=lambda: ["none"])
-    dp_clip: float = 1.0
-    dp_noise: float = 1.0
-    dp_delta: float = 1e-5
 
 
 def get_federated_params(args) -> FederatedParams:
@@ -97,8 +92,4 @@ def get_federated_params(args) -> FederatedParams:
         clip_norm=args.fl_clip_norm,
         outlier_threshold=args.fl_outlier_threshold,
         eval_every=args.fl_eval_every,
-        dp=args.fl_dp,
-        dp_clip=args.fl_dp_clip,
-        dp_noise=args.fl_dp_noise,
-        dp_delta=args.fl_dp_delta,
     )
