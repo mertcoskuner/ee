@@ -1,13 +1,14 @@
-"""Construct the MNIST model and load evaluation checkpoints."""
+"""Construct the MNIST CNN and load evaluation checkpoints."""
 
 import torch
 
-from models.madry_cnn import MadryCNN
+from models.CNN import MNIST_CNN
 
 
 def build_model(params):
-    """Construct MadryCNN with the configured number of output classes."""
-    return MadryCNN(num_classes=params.model.num_classes)
+    """Construct MNIST_CNN with the configured number of output classes."""
+    # MNIST_CNN takes an unused ``norm`` argument that has no default.
+    return MNIST_CNN(norm=None, num_classes=params.model.num_classes)
 
 
 def load_weights(model, params, device):

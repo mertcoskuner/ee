@@ -1,6 +1,7 @@
 """Batch predictions and feature extraction for attack evaluation."""
 
 import torch
+from torch import nn
 
 from src.attacks import run_attack
 
@@ -34,13 +35,22 @@ def predict(model, x, device, batch_size=1000):
 
 @torch.no_grad()
 def features(model, x, device, batch_size=1000):
-    """Return batched penultimate features as a NumPy array on CPU."""
-    return torch.cat(
-        [
-            model.features(x[i : i + batch_size].to(device)).cpu()
-            for i in range(0, len(x), batch_size)
-        ]
-    ).numpy()
+    """Return batched penultimate features as a NumPy array on CPU.
+
+    The features are the inputs of the model's last linear layer, captured
+    with a forward hook so any classifier ending in nn.Linear works.
+    """
+    head = [m for m in model.modules() if isinstance(m, nn.Linear)][-1]
+    captured = []
+    hook = head.register_forward_hook(
+        lambda module, inputs, output: captured.append(inputs[0].cpu())
+    )
+    try:
+        for i in range(0, len(x), batch_size):
+            model(x[i : i + batch_size].to(device))
+    finally:
+        hook.remove()
+    return torch.cat(captured).numpy()
 
 
 def attack(model, x, y, name, params, device):

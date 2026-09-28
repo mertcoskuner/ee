@@ -5,7 +5,6 @@ import math
 
 from src.params.attack_params import AttackParams
 from src.params.data_loader_params import DataLoaderParams
-from src.params.model_params import ModelParams
 from src.params.run_params import RunParams
 from src.params.training_params import TrainingParams
 
@@ -14,7 +13,7 @@ def args_parser(argv=None):
     """Parse optional CLI tokens and return a validated namespace.
 
     Use process arguments when argv is None. Invalid values or
-    incompatible mode/checkpoint selections terminate through
+    out-of-range selections terminate through
     argparse.error.
     """
     parser = argparse.ArgumentParser(
@@ -22,14 +21,8 @@ def args_parser(argv=None):
     )
     parser.add_argument(
         "--mode",
-        choices=["train", "test", "both", "visualize", "tsne"],
+        choices=["train", "test", "both", "visualize", "tsne", "gradcam"],
         default=RunParams.mode,
-    )
-    parser.add_argument(
-        "--pretrained",
-        choices=["none", "natural", "adv_trained", "secret"],
-        default=ModelParams.pretrained,
-        help="official checkpoint converted with python pretrained.py",
     )
     parser.add_argument("--epochs", type=int, default=TrainingParams.epochs)
     parser.add_argument(
@@ -95,6 +88,4 @@ def args_parser(argv=None):
         parser.error("--seed must be between 0 and 2**32 - 1")
     if args.validation_size >= 60000:
         parser.error("--validation_size must be smaller than 60000")
-    if args.mode in ("train", "both") and args.pretrained != "none":
-        parser.error("--pretrained requires --mode test, visualize, or tsne")
     return args

@@ -3,6 +3,7 @@
 import torch
 
 from config.args import args_parser
+from gradcam import run_gradcam
 from src.params import get_params
 from src.utils.helper_model import build_model
 from src.utils.helper_run import set_seed
@@ -35,6 +36,9 @@ def main():
 
     if params.run.mode == "tsne":
         run_tsne(model, params, device)
+
+    if params.run.mode == "gradcam":
+        run_gradcam(model, params, device)
 
 
 if __name__ == "__main__":

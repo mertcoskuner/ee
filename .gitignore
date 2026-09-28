@@ -1,8 +1,6 @@
 data/
-checkpoints/
 results/
 __pycache__/
 best_*
 .venv/
-.ruff_cache/
 /tests/
