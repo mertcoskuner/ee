@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from src.utils.helper_data import get_loaders, loader_tensors
+from src.utils.helper_eval import accuracy, predict
 
 from .registry import DEFENSES
 
@@ -71,16 +72,6 @@ def unit_activations(model, layer, kind, x, batch_size=1000):
     return torch.stack(captured).sum(0) / len(x)
 
 
-@torch.no_grad()
-def accuracy(model, x, y, batch_size=1000):
-    """Return the clean accuracy of model on (x, y)."""
-    correct = sum(
-        (model(x[i : i + batch_size]).argmax(1) == y[i : i + batch_size]).sum().item()
-        for i in range(0, len(x), batch_size)
-    )
-    return correct / len(x)
-
-
 def bake_mask(layer, kind, mask):
     """Zero the weights of pruned units so the pruning survives saving."""
     with torch.no_grad():
@@ -101,24 +92,29 @@ def fine_pruning(model, x_val, y_val, train_loader, max_drop, epochs, lr, device
     pruning into the weights. Return a dict with accuracies and the
     pruned unit indices; the model is modified in place.
     """
+
+    def val_accuracy():
+        """Return the model's accuracy on the validation images."""
+        return accuracy(predict(model, x_val, device), y_val.cpu())
+
     layer, kind = pruning_target(model)
     activations = unit_activations(model, layer, kind, x_val)
     order = activations.argsort()
     units = len(order)
     masker = UnitMask(layer, kind, units, device)
-    base = accuracy(model, x_val, y_val)
+    base = val_accuracy()
     step = max(1, units // 50)
     pruned = 0
     try:
         for count in range(step, units, step):
             masker.mask.fill_(1)
             masker.mask[order[:count]] = 0
-            if accuracy(model, x_val, y_val) < base - max_drop:
+            if val_accuracy() < base - max_drop:
                 break
             pruned = count
         masker.mask.fill_(1)
         masker.mask[order[:pruned]] = 0
-        after_prune = accuracy(model, x_val, y_val)
+        after_prune = val_accuracy()
 
         model.requires_grad_(True)
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -140,7 +136,7 @@ def fine_pruning(model, x_val, y_val, train_loader, max_drop, epochs, lr, device
         "pruned_units": order[:pruned].tolist(),
         "acc_before": base,
         "acc_after_prune": after_prune,
-        "acc_after_finetune": accuracy(model, x_val, y_val),
+        "acc_after_finetune": val_accuracy(),
     }
 
 

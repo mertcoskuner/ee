@@ -21,7 +21,7 @@ class RunParams:
 
     mode: str = "both"
     seed: int = 0
-    device: str = "cpu"
+    device: str = "auto"
     results_dir: str = "results"
 
 

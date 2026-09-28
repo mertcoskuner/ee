@@ -90,3 +90,60 @@ def plot_training_curve(curve, params):
     ax.legend(frameon=False, fontsize=8)
     ax.set_title(params.model.tag, fontsize=9)
     save_fig(fig, params, f"training_curve_{params.model.tag}")
+
+
+def plot_federated_run(history, counts, params, tag):
+    """Save one federated run's accuracy curve and per-client label shares."""
+    fig, (ax_acc, ax_lab) = plt.subplots(1, 2, figsize=(10.5, 3.6))
+    ax_acc.plot(
+        history["round"], [100 * a for a in history["test_acc"]], color="#2a78d6"
+    )
+    ax_acc.set_xlabel("round")
+    ax_acc.set_ylabel("test accuracy (%)")
+    ax_acc.set_ylim(0, 100)
+    ax_acc.grid(alpha=0.3)
+    ax_acc.set_title(tag, fontsize=8)
+    shares = counts / counts.sum(1, keepdims=True)
+    ax_lab.imshow(shares.T, aspect="auto", cmap="Blues", vmin=0, vmax=1)
+    ax_lab.set_xlabel("client")
+    ax_lab.set_ylabel("class")
+    ax_lab.set_title(f"label shares ({params.federated.partition})", fontsize=9)
+    fig.tight_layout()
+    save_fig(fig, params, f"federated_{params.model.model}_{tag}")
+
+
+def print_federated_summary(summary, fields, params):
+    """Print and save the final accuracy of every federated combination."""
+    print("\n=== Federated summary ===")
+    print("  " + "  ".join(f"{n:>18s}" for n in fields) + "  final acc")
+    for row in summary:
+        acc = "skipped" if row["final_acc"] is None else f"{row['final_acc']:.4f}"
+        print("  " + "  ".join(f"{row[n]:>18s}" for n in fields) + f"  {acc}")
+    save_json(summary, params, f"federated_summary_{params.model.model}")
+
+
+def print_test_summary(rows, params):
+    """Print and save a table of test metrics, one row per combination.
+
+    Columns are clean accuracy, its drop against the clean reference,
+    robust accuracy and attack success rate (_asr) per attack, and the
+    backdoor attack success rate.
+    """
+    seen = list(dict.fromkeys(k for _, res in rows for k in res))
+    first = [c for c in ("clean", "clean_drop") if c in seen]
+    last = [c for c in ("backdoor_asr",) if c in seen]
+    columns = first + [c for c in seen if c not in first + last] + last
+    widths = [max(10, len(c) + 2) for c in columns]
+    head = f"{'model':>12s} {'optimizer':>10s} {'train_attack':>13s} {'backdoor':>9s}"
+    print("\n=== Summary: test metrics ===")
+    print(head + "".join(f"{c:>{w}s}" for c, w in zip(columns, widths)))
+    for run, res in rows:
+        line = (
+            f"{run['model']:>12s} {run['optimizer']:>10s} "
+            f"{run['train_attack']:>13s} {run['backdoor']:>9s}"
+        )
+        cells = (res.get(c, float("nan")) for c in columns)
+        print(line + "".join(f"{v:>{w}.4f}" for v, w in zip(cells, widths)))
+    save_json(
+        [{**run, "metrics": res} for run, res in rows], params, "experiment_summary"
+    )

@@ -1,4 +1,4 @@
-"""Seed random generators and configure cuDNN determinism."""
+"""Seed random generators, configure cuDNN determinism, and pick the device."""
 
 import random
 
@@ -14,3 +14,14 @@ def set_seed(seed):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+
+def resolve_device(name):
+    """Return the torch device for name; "auto" picks CUDA, then MPS, then CPU."""
+    if name != "auto":
+        return torch.device(name)
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")

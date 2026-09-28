@@ -17,7 +17,7 @@ from sklearn.metrics import silhouette_score
 from sklearn.neighbors import KNeighborsClassifier
 
 from src.utils.helper_data import load_mnist_tensors
-from src.utils.helper_eval import attack, features, predict
+from src.utils.helper_eval import attack, features, first_correct_per_class, predict
 from src.utils.helper_model import load_weights
 from src.utils.helper_plot import save_fig
 
@@ -46,10 +46,7 @@ def run_visualize(model, params, device):
     norms.
     """
     model = load_weights(model, params, device)
-    x_all, y_all = load_mnist_tensors(params, train=False)
-    ok = predict(model, x_all, device) == y_all
-    idx = [int(((y_all == c) & ok).nonzero()[0]) for c in range(10)]
-    x, y = x_all[idx], y_all[idx]
+    x, y = first_correct_per_class(model, params, device)
 
     torch.manual_seed(params.run.seed)
     x_inf = attack(model, x, y, "pgd_linf", params, device)

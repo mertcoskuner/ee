@@ -54,8 +54,11 @@ main.py                     entry point: expands combinations and dispatches to 
     │   ├── aggregators/    FedAvg, median, trimmed mean, (Multi-)Krum, Bulyan, centered clipping,
     │   │                   geometric median, norm clipping, outlier removal, two-layer → registry AGGREGATORS
     │   └── attacks/        none, label_flip, alie, ipm, sign_flip, gaussian → registry FL_ATTACKS
-    └── utils/              helper_*.py: registry, experiment expansion, data,
-                            model, optimizer, regularization, evaluation, statistics, plotting, seeding
+    └── utils/              helper_*.py: registry, experiment expansion (central and federated), data,
+                            model (build, checkpoints, surrogate, reference), optimizer, regularization,
+                            evaluation (accuracy, attack success rate), attack gradients, Grad-CAM,
+                            perturbation geometry, federated clients, statistics, plots and reports,
+                            seeding and device selection
 ```
 
 ### How a run flows
@@ -245,8 +248,8 @@ A new hyperparameter takes three steps:
 ### Data
 
 Training holds out 5,000 MNIST training images for validation (`--validation_size`, reproducible with `--seed`), so
-checkpoint selection never uses the test split. `--device` is honored explicitly: `cpu` by default, or for example
-`mps` or `cuda:0`.
+checkpoint selection never uses the test split. `--device auto` (the default) uses a CUDA GPU when one is available,
+then Apple MPS, then the CPU; `--device cpu` or `--device cuda:1` picks one explicitly.
 
 ## Weekly scripts
 
@@ -254,7 +257,7 @@ Every script in `scripts/` runs from any directory and writes to `results/weekNN
 
 - **Reusing models:** checkpoints are reused when they already exist.
 - **Settings:** `QUICK=1` shrinks epochs, samples, attack iterations and rounds for a fast pass. `PYTHON`, `DEVICE`
-  and `RESULTS` override the interpreter, the device and the output root.
+  (default `auto`: GPU when available) and `RESULTS` override the interpreter, the device and the output root.
 
 ```bash
 bash scripts/week03_adversarial_attacks.sh

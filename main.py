@@ -5,8 +5,6 @@ options may list several values; every combination is run in turn and,
 for modes that evaluate attacks, summarised in one table.
 """
 
-import torch
-
 from config.args import args_parser
 from defense import run_defense
 from federated import run_federated
@@ -15,8 +13,8 @@ from gradcam import run_gradcam
 from src.params import get_params
 from src.utils.helper_experiments import central_runs
 from src.utils.helper_model import build_model
-from src.utils.helper_plot import save_json
-from src.utils.helper_run import set_seed
+from src.utils.helper_plot import print_test_summary
+from src.utils.helper_run import resolve_device, set_seed
 from test import run_test
 from train import run_training
 from visualize import run_tsne, run_visualize
@@ -41,29 +39,10 @@ RUNNERS = {
 }
 
 
-def print_summary(rows, params):
-    """Print and save a table of accuracies, one row per combination."""
-    columns = list(dict.fromkeys(k for _, res in rows for k in res))
-    head = f"{'model':>12s} {'optimizer':>10s} {'train_attack':>13s} {'backdoor':>9s}"
-    print("\n=== Summary: test accuracy ===")
-    widths = [max(10, len(c) + 2) for c in columns]
-    print(head + "".join(f"{c:>{w}s}" for c, w in zip(columns, widths)))
-    for run, res in rows:
-        line = (
-            f"{run['model']:>12s} {run['optimizer']:>10s} "
-            f"{run['train_attack']:>13s} {run['backdoor']:>9s}"
-        )
-        cells = (res.get(c, float("nan")) for c in columns)
-        print(line + "".join(f"{v:>{w}.4f}" for v, w in zip(cells, widths)))
-    save_json(
-        [{**run, "accuracy": res} for run, res in rows], params, "experiment_summary"
-    )
-
-
 def main():
     """Run the selected mode for every central combination of settings."""
     params = get_params(args_parser())
-    device = torch.device(params.run.device)
+    device = resolve_device(params.run.device)
     runs = list(central_runs(params))
     rows = []
     for i, (run, run_params) in enumerate(runs, 1):
@@ -79,7 +58,7 @@ def main():
         if run_params.run.mode in ("test", "both"):
             rows.append((run, result))
     if rows:
-        print_summary(rows, params)
+        print_test_summary(rows, params)
 
 
 if __name__ == "__main__":

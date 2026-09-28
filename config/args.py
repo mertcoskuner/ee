@@ -38,7 +38,11 @@ def args_parser(argv=None):
     )
     parser.add_argument("--mode", choices=MODES, default=RunParams.mode)
     parser.add_argument("--seed", type=int, default=RunParams.seed)
-    parser.add_argument("--device", default=RunParams.device)
+    parser.add_argument(
+        "--device",
+        default=RunParams.device,
+        help="auto (CUDA, then MPS, then CPU) or a torch device such as cuda:1",
+    )
     parser.add_argument("--results_dir", default=RunParams.results_dir)
 
     parser.add_argument(

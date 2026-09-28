@@ -4,7 +4,7 @@ import torch
 from torch.nn.utils import parameters_to_vector
 
 from src.federated.aggregators import build_aggregator
-from src.federated.attacks import build_attack
+from src.federated.attacks import FL_ATTACKS, build_attack
 
 
 def build_server_optimizer(model, fl):
@@ -43,6 +43,13 @@ def assumed_attackers(fl):
     """
     if fl.assumed_byzantine is not None:
         return fl.assumed_byzantine
+    return round(fl.byzantine_ratio * fl.clients)
+
+
+def num_byzantine(fl):
+    """Return the number of Byzantine clients; zero for the "none" attack."""
+    if FL_ATTACKS.meta(fl.attack, "benign", False):
+        return 0
     return round(fl.byzantine_ratio * fl.clients)
 
 

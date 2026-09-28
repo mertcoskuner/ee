@@ -1,7 +1,7 @@
-"""Expand list-valued central settings into one experiment per combination.
+"""Expand list-valued settings into one experiment per combination.
 
-The model, optimizer, training-attack, and backdoor options accept several
-values;
+Central runs: the model, optimizer, training-attack, and backdoor options
+accept several values;
 every combination becomes its own run with its own checkpoint name, so one
 command can train and evaluate clean and adversarially trained models with
 several optimizers and architectures.
@@ -11,7 +11,12 @@ import dataclasses
 import itertools
 
 from models import MODELS
+from src.federated.aggregators import AGGREGATORS
+from src.federated.attacks import FL_ATTACKS
+from src.params.federated_params import SWEEP_FIELDS
 from src.params.training_params import OPTIMIZERS
+
+FL_REGISTRIES = {"aggregator": AGGREGATORS, "attack": FL_ATTACKS}
 
 CENTRAL_AXES = ["model", "optimizer", "train_attack", "backdoor"]
 
@@ -70,3 +75,25 @@ def central_runs(params):
                 backdoor=dataclasses.replace(params.backdoor, backdoor=backdoor),
             )
         )
+
+
+def fl_combinations(fl):
+    """Yield one FederatedParams per combination of the federated sweep fields.
+
+    List-valued fields (partition, local, server_opt, aggregator, attack)
+    are expanded, with "all" standing for every registered value.
+    """
+    axes = []
+    for name in SWEEP_FIELDS:
+        values = getattr(fl, name)
+        registry = FL_REGISTRIES.get(name)
+        axes.append(
+            registry.expand(values) if registry else list(dict.fromkeys(values))
+        )
+    for combo in itertools.product(*axes):
+        yield dataclasses.replace(fl, **dict(zip(SWEEP_FIELDS, combo)))
+
+
+def fl_run_tag(fl):
+    """Return a short name identifying one federated combination."""
+    return "_".join(str(getattr(fl, name)) for name in SWEEP_FIELDS)

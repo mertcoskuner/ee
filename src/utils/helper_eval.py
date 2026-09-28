@@ -4,6 +4,7 @@ import torch
 from torch import nn
 
 from src.attacks import run_attack
+from src.utils.helper_data import load_mnist_tensors
 
 
 def predict_under_attack(model, x, y, name, params, device, source=None):
@@ -59,3 +60,49 @@ def features(model, x, device, batch_size=1000):
 def attack(model, x, y, name, params, device):
     """Attack inputs on the requested device and return the result on CPU."""
     return run_attack(model, x.to(device), y.to(device), name, params).cpu()
+
+
+def accuracy(preds, y):
+    """Return the fraction of predictions equal to the labels."""
+    return preds.eq(y).float().mean().item()
+
+
+def evasion_success_rate(clean_preds, adv_preds, y):
+    """Return the share of correctly classified inputs the attack turns wrong.
+
+    Only inputs the model gets right without the attack count, so the rate
+    measures the attack itself rather than the model's clean errors.
+    """
+    correct = clean_preds.eq(y)
+    if not correct.any():
+        return 0.0
+    return adv_preds[correct].ne(y[correct]).float().mean().item()
+
+
+def first_correct_per_class(model, params, device, num_classes=10):
+    """Return the first correctly classified test image of every class.
+
+    Every class must have at least one correctly classified image.
+    """
+    x_all, y_all = load_mnist_tensors(params, train=False)
+    ok = predict(model, x_all, device) == y_all
+    idx = [int(((y_all == c) & ok).nonzero()[0]) for c in range(num_classes)]
+    return x_all[idx], y_all[idx]
+
+
+def clean_and_robust_accuracy(model, x, y, attack_name, params, device):
+    """Return (clean, robust) accuracy of model on (x, y) under attack_name."""
+    model.eval()
+    clean = accuracy(predict(model, x, device), y)
+    robust = accuracy(predict_under_attack(model, x, y, attack_name, params, device), y)
+    return clean, robust
+
+
+def print_per_class(preds, y, num_classes):
+    """Print the accuracy of preds on every class."""
+    for c in range(num_classes):
+        mask = y == c
+        print(
+            f"  Class {c}: {preds[mask].eq(c).float().mean().item():.4f}  "
+            f"({preds[mask].eq(c).sum().item()}/{mask.sum().item()})"
+        )

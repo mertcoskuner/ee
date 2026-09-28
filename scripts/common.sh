@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 PYTHON=${PYTHON:-python}
-DEVICE=${DEVICE:-cpu}
+DEVICE=${DEVICE:-auto}
 QUICK=${QUICK:-0}
 RESULTS=${RESULTS:-results}
 

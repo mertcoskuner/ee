@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 from src.attacks import run_attack
 from src.utils.helper_data import get_loaders, load_mnist_tensors
-from src.utils.helper_eval import predict, predict_under_attack
+from src.utils.helper_eval import clean_and_robust_accuracy
 from src.utils.helper_optim import build_optimizer
 from src.utils.helper_plot import plot_training_curve, save_json
 from src.utils.helper_regularization import EarlyStopping, l1_penalty
@@ -109,21 +109,6 @@ def validate(model, loader, device, params):
     return correct / n, (correct_adv / n if adversarial(params) else None)
 
 
-def test_accuracies(model, x, y, params, device):
-    """Return (clean, robust) test accuracy for the training attack.
-
-    Robust accuracy uses the evaluation settings of the training attack
-    (PGD-linf by default for clean training), as in studies of robust
-    overfitting.
-    """
-    model.eval()
-    clean = (predict(model, x, device) == y).float().mean().item()
-    attack = params.training.train_attack
-    attack = "pgd_linf" if attack == "none" else attack
-    preds = predict_under_attack(model, x, y, attack, params, device)
-    return clean, (preds == y).float().mean().item()
-
-
 def run_training(model, params, device):
     """Train and restore the checkpoint with the best validation accuracy.
 
@@ -171,7 +156,14 @@ def run_training(model, params, device):
         curve["val_acc"].append(val_acc)
         curve["val_robust"].append(val_rob)
         if params.training.track_test:
-            clean, robust = test_accuracies(model, x_test, y_test, params, device)
+            clean, robust = clean_and_robust_accuracy(
+                model,
+                x_test,
+                y_test,
+                "pgd_linf" if attack == "none" else attack,
+                params,
+                device,
+            )
             curve["test_clean"].append(clean)
             curve["test_robust"].append(robust)
             print(f"  Test  acc: {clean:.4f}  robust acc: {robust:.4f}")

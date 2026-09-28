@@ -1,25 +1,36 @@
-"""Report clean and adversarial test accuracy, overall and per class."""
+"""Report clean accuracy, its drop, robust accuracy, and attack success rates."""
 
 from src.attacks import attack_label
 from src.backdoors import attack_success_rate, build_backdoor
 from src.utils.helper_data import load_test_set
-from src.utils.helper_eval import predict_under_attack
-from src.utils.helper_model import load_surrogate, load_weights
+from src.utils.helper_eval import (
+    accuracy,
+    evasion_success_rate,
+    predict_under_attack,
+    print_per_class,
+)
+from src.utils.helper_model import load_reference, load_surrogate, load_weights
 
 
-def evaluate_attacks(model, params, device):
-    """Print overall and per-class accuracy for clean and attacked inputs.
+def evaluate_attacks(model, params, device, reference_clean=None):
+    """Print and return clean and attacked metrics of an evaluation-mode model.
 
-    Evaluate the prepared (evaluation-mode) model on the test set under
-    every selected attack and return overall accuracies keyed by attack
-    name, including "clean". With --surrogate_model the attacks are crafted
-    on the surrogate and transferred (grey- or black-box); otherwise they
-    are white-box. For a backdoored model, also report the trigger's
-    attack success rate under the key "backdoor_asr".
+    The returned dict holds:
+    - "clean": clean test accuracy;
+    - "clean_drop": reference clean accuracy minus clean accuracy, when a
+      reference exists (reference_clean, or the clean checkpoint of the same
+      architecture and optimizer for adversarially trained or backdoored
+      models);
+    - "<attack>": robust accuracy under each selected attack;
+    - "<attack>_asr": attack success rate, the share of correctly classified
+      images the attack turns wrong;
+    - "backdoor_asr": for a backdoored model, the share of non-target images
+      the trigger sends to the target class.
+    With --surrogate_model the attacks are crafted on the surrogate and
+    transferred (grey- or black-box); otherwise they are white-box.
     """
     x, y = load_test_set(params)
     surrogate = load_surrogate(params, device)
-    results = {}
     origin = "white-box"
     if surrogate is not None:
         origin = f"transferred from {params.attack.surrogate_model}"
@@ -27,20 +38,33 @@ def evaluate_attacks(model, params, device):
         f"\n=== Test Results ({params.model.weights}, {len(x)} images, "
         f"attacks {origin}) ==="
     )
-    for name in ["clean"] + params.attack.attacks:
-        preds = predict_under_attack(model, x, y, name, params, device, surrogate)
-        acc = preds.eq(y).float().mean().item()
-        results[name] = acc
+    clean_preds = predict_under_attack(model, x, y, "clean", params, device)
+    results = {"clean": accuracy(clean_preds, y)}
+    print(f"\nClean accuracy: {results['clean']:.4f}")
+    reference_name = "before defense"
+    if reference_clean is None:
+        reference, reference_name = load_reference(params, device)
+        if reference is not None:
+            ref_preds = predict_under_attack(reference, x, y, "clean", params, device)
+            reference_clean = accuracy(ref_preds, y)
+    if reference_clean is not None:
+        results["clean_drop"] = reference_clean - results["clean"]
         print(
-            f"\n{attack_label(name, params)}: accuracy {acc:.4f}  "
-            f"({preds.eq(y).sum().item()}/{len(y)})"
+            f"Reference clean accuracy ({reference_name}): {reference_clean:.4f}  "
+            f"clean accuracy drop: {results['clean_drop']:+.4f}"
         )
-        for c in range(params.model.num_classes):
-            mask = y == c
-            print(
-                f"  Class {c}: {preds[mask].eq(c).float().mean().item():.4f}  "
-                f"({preds[mask].eq(c).sum().item()}/{mask.sum().item()})"
-            )
+    print_per_class(clean_preds, y, params.model.num_classes)
+
+    for name in params.attack.attacks:
+        preds = predict_under_attack(model, x, y, name, params, device, surrogate)
+        results[name] = accuracy(preds, y)
+        results[f"{name}_asr"] = evasion_success_rate(clean_preds, preds, y)
+        print(
+            f"\n{attack_label(name, params)}: robust accuracy {results[name]:.4f}  "
+            f"attack success rate {results[f'{name}_asr']:.4f}"
+        )
+        print_per_class(preds, y, params.model.num_classes)
+
     trigger = build_backdoor(params.backdoor)
     if trigger is not None:
         target = params.backdoor.target_class
@@ -54,5 +78,5 @@ def evaluate_attacks(model, params, device):
 
 
 def run_test(model, params, device):
-    """Load the selected checkpoint and evaluate every selected attack."""
+    """Load the selected checkpoint and evaluate it clean and under attack."""
     return evaluate_attacks(load_weights(model, params, device), params, device)
