@@ -6,11 +6,83 @@ import math
 from src.params.attack_params import ATTACKS, AttackParams
 from src.params.data_loader_params import DataLoaderParams
 from src.params.defense_params import DEFENSES, DefenseParams
+from src.params.federated_params import FederatedParams
 from src.params.model_params import ModelParams
 from src.params.run_params import RunParams
 from src.params.training_params import TrainingParams
 
-MODES = ["train", "test", "both", "visualize", "tsne", "gradcam", "defense"]
+MODES = [
+    "train",
+    "test",
+    "both",
+    "visualize",
+    "tsne",
+    "gradcam",
+    "defense",
+    "federated",
+]
+FL_CHOICES = {
+    "partition": ["iid", "dirichlet", "shards"],
+    "local": ["plain", "fedprox", "scaffold", "kd"],
+    "server_opt": ["sgd", "momentum", "nesterov", "adam"],
+    "aggregator": [
+        "fedavg",
+        "median",
+        "trimmed_mean",
+        "krum",
+        "multi_krum",
+        "bulyan",
+        "centered_clipping",
+        "geometric_median",
+        "norm_clipping",
+        "outlier_removal",
+    ],
+    "attack": ["none", "label_flip", "alie", "ipm", "sign_flip", "gaussian"],
+}
+FL_CHOICES["inner_aggregator"] = FL_CHOICES["aggregator"]
+
+
+def add_federated_args(parser):
+    """Add one --fl_<name> option per FederatedParams field.
+
+    Types and defaults come from the dataclass; fields with a fixed set of
+    values get argparse choices, and optional fields accept a number.
+    """
+    for name, field in FederatedParams.__dataclass_fields__.items():
+        default = field.default
+        kind = {"int | None": int, "float | None": float}.get(str(field.type))
+        kind = kind or type(default)
+        parser.add_argument(
+            f"--fl_{name}", type=kind, default=default, choices=FL_CHOICES.get(name)
+        )
+
+
+def validate_federated_args(parser, args):
+    """Reject inconsistent federated settings through parser.error."""
+    for name in ("rounds", "clients", "local_steps", "batch_size", "eval_every"):
+        if getattr(args, f"fl_{name}") <= 0:
+            parser.error(f"--fl_{name} must be positive")
+    if not 0 < args.fl_participation <= 1:
+        parser.error("--fl_participation must be in (0, 1]")
+    if not 0 <= args.fl_byzantine_ratio < 0.5:
+        parser.error("--fl_byzantine_ratio must be in [0, 0.5)")
+    if (
+        args.fl_attack != "none"
+        and round(args.fl_byzantine_ratio * args.fl_clients) == 0
+    ):
+        parser.error("--fl_attack needs --fl_byzantine_ratio with at least one client")
+    for name in (
+        "alpha",
+        "local_lr",
+        "server_lr",
+        "server_tau",
+        "kd_temperature",
+        "cc_tau",
+    ):
+        if getattr(args, f"fl_{name}") <= 0:
+            parser.error(f"--fl_{name} must be positive")
+    if args.fl_group_size < 1:
+        parser.error("--fl_group_size must be at least 1")
 
 
 def args_parser(argv=None):
@@ -84,6 +156,7 @@ def args_parser(argv=None):
     parser.add_argument("--fp_max_drop", type=float, default=DefenseParams.fp_max_drop)
     parser.add_argument("--fp_epochs", type=int, default=DefenseParams.fp_epochs)
     parser.add_argument("--ls_samples", type=int, default=DefenseParams.ls_samples)
+    add_federated_args(parser)
     args = parser.parse_args(argv)
     for name in (
         "epochs",
@@ -135,4 +208,5 @@ def args_parser(argv=None):
         parser.error("--validation_size must be smaller than 60000")
     if args.mode == "gradcam" and args.model != "cnn":
         parser.error("--mode gradcam requires the convolutional --model cnn")
+    validate_federated_args(parser, args)
     return args
