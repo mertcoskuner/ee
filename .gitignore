@@ -1,0 +1,9 @@
+data/
+checkpoints/
+results/
+models/__pycache__/
+__pycache__/
+best_*
+.venv/
+.ruff_cache/
+/tests/
