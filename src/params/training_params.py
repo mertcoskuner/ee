@@ -35,3 +35,7 @@ class TrainingParams:
         0.01, "PGD-linf step size during adversarial training", gt=0
     )
     log_interval: int = option(200, "batches between progress lines", gt=0)
+    track_test: bool = option(
+        False, "record clean and robust test accuracy after every epoch"
+    )
+    track_samples: int = option(1000, "test images used by --track_test", gt=0)

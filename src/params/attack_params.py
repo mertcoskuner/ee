@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from models import MODELS
 from src.attacks import ATTACKS
 
 from src.utils.helper_params import option
@@ -31,6 +32,22 @@ class AttackParams:
     cw_kappa: float = option(0.0, "CW confidence margin", ge=0)
     cw_steps: int = option(1000, "CW Adam steps per search step", gt=0)
     cw_lr: float = option(0.01, "CW Adam learning rate", gt=0)
+    square_queries: int = option(1000, "Square Attack query budget", gt=0)
+    autoattack_version: str = option(
+        "standard", "AutoAttack version", choices=["standard", "plus", "rand"]
+    )
+    surrogate_model: str | None = option(
+        None,
+        "craft attacks on this surrogate architecture and transfer them "
+        "(default: attack the evaluated model itself, white-box)",
+        choices=MODELS.names,
+    )
+    surrogate_optimizer: str = option(
+        "adam", "optimizer the surrogate checkpoint was trained with"
+    )
+    surrogate_train_attack: str = option(
+        "none", "training attack of the surrogate checkpoint"
+    )
 
     @property
     def attacks(self) -> list[str]:

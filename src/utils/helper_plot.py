@@ -68,3 +68,25 @@ def plot_latent_separability(res, params):
         ax.set_yticks([])
     fig.tight_layout()
     save_fig(fig, params, f"latent_separability_{params.model.tag}")
+
+
+def plot_training_curve(curve, params):
+    """Save training, validation, and test accuracy per epoch."""
+    fig, ax = plt.subplots(figsize=(6.5, 3.8))
+    series = [
+        ("train_acc", "train (training inputs)", "#52514e", "-"),
+        ("test_clean", "test clean", "#2a78d6", "-"),
+        ("test_robust", "test robust", "#eb6834", "-"),
+        ("val_robust", "validation robust", "#eb6834", ":"),
+    ]
+    for key, label, color, style in series:
+        values = curve.get(key)
+        if values and values[0] is not None:
+            ax.plot(curve["epoch"], values, style, color=color, label=label)
+    ax.set_xlabel("epoch")
+    ax.set_ylabel("accuracy")
+    ax.set_ylim(0, 1)
+    ax.grid(alpha=0.3)
+    ax.legend(frameon=False, fontsize=8)
+    ax.set_title(params.model.tag, fontsize=9)
+    save_fig(fig, params, f"training_curve_{params.model.tag}")

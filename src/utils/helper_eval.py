@@ -6,17 +6,20 @@ from torch import nn
 from src.attacks import run_attack
 
 
-def predict_under_attack(model, x, y, name, params, device):
+def predict_under_attack(model, x, y, name, params, device, source=None):
     """Return CPU class predictions for an attacked dataset in batches.
 
-    Reset the PyTorch seed before each attack for reproducible random
-    starts. The model is expected to be in evaluation mode.
+    Adversarial examples are crafted on source (a surrogate, for transfer
+    attacks) or on model itself when source is None. Reset the PyTorch
+    seed before each attack for reproducible random starts. The models are
+    expected to be in evaluation mode.
     """
     torch.manual_seed(params.run.seed)
     bs, preds = params.data_loader.test_batch_size, []
     for i in range(0, len(x), bs):
         xb, yb = x[i : i + bs].to(device), y[i : i + bs].to(device)
-        x_adv = run_attack(model, xb, yb, name, params)
+        attacker = model if source is None else source
+        x_adv = run_attack(attacker, xb, yb, name, params)
         with torch.no_grad():
             preds.append(model(x_adv).argmax(1).cpu())
     return torch.cat(preds)

@@ -4,7 +4,7 @@ from src.attacks import attack_label
 from src.backdoors import attack_success_rate, build_backdoor
 from src.utils.helper_data import load_test_set
 from src.utils.helper_eval import predict_under_attack
-from src.utils.helper_model import load_weights
+from src.utils.helper_model import load_surrogate, load_weights
 
 
 def evaluate_attacks(model, params, device):
@@ -12,14 +12,23 @@ def evaluate_attacks(model, params, device):
 
     Evaluate the prepared (evaluation-mode) model on the test set under
     every selected attack and return overall accuracies keyed by attack
-    name, including "clean". For a backdoored model, also report the
-    trigger's attack success rate under the key "backdoor_asr".
+    name, including "clean". With --surrogate_model the attacks are crafted
+    on the surrogate and transferred (grey- or black-box); otherwise they
+    are white-box. For a backdoored model, also report the trigger's
+    attack success rate under the key "backdoor_asr".
     """
     x, y = load_test_set(params)
+    surrogate = load_surrogate(params, device)
     results = {}
-    print(f"\n=== Test Results ({params.model.weights}, {len(x)} images) ===")
+    origin = "white-box"
+    if surrogate is not None:
+        origin = f"transferred from {params.attack.surrogate_model}"
+    print(
+        f"\n=== Test Results ({params.model.weights}, {len(x)} images, "
+        f"attacks {origin}) ==="
+    )
     for name in ["clean"] + params.attack.attacks:
-        preds = predict_under_attack(model, x, y, name, params, device)
+        preds = predict_under_attack(model, x, y, name, params, device, surrogate)
         acc = preds.eq(y).float().mean().item()
         results[name] = acc
         print(

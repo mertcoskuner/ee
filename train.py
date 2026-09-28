@@ -7,8 +7,10 @@ import torch
 import torch.nn.functional as F
 
 from src.attacks import run_attack
-from src.utils.helper_data import get_loaders
+from src.utils.helper_data import get_loaders, load_mnist_tensors
+from src.utils.helper_eval import predict, predict_under_attack
 from src.utils.helper_optim import build_optimizer
+from src.utils.helper_plot import plot_training_curve, save_json
 from src.utils.helper_regularization import EarlyStopping, l1_penalty
 
 
@@ -107,13 +109,30 @@ def validate(model, loader, device, params):
     return correct / n, (correct_adv / n if adversarial(params) else None)
 
 
+def test_accuracies(model, x, y, params, device):
+    """Return (clean, robust) test accuracy for the training attack.
+
+    Robust accuracy uses the evaluation settings of the training attack
+    (PGD-linf by default for clean training), as in studies of robust
+    overfitting.
+    """
+    model.eval()
+    clean = (predict(model, x, device) == y).float().mean().item()
+    attack = params.training.train_attack
+    attack = "pgd_linf" if attack == "none" else attack
+    preds = predict_under_attack(model, x, y, attack, params, device)
+    return clean, (preds == y).float().mean().item()
+
+
 def run_training(model, params, device):
     """Train and restore the checkpoint with the best validation accuracy.
 
     Select by adversarial validation accuracy for adversarial training
     and clean validation accuracy otherwise. Save every improved
     checkpoint and stop early after params.training.patience epochs
-    without improvement when patience is positive.
+    without improvement when patience is positive. With --track_test,
+    record clean and robust test accuracy after every epoch and save the
+    curve, which exposes robust (adversarial) overfitting.
     """
     train_loader, val_loader = get_loaders(params)
     optimizer = build_optimizer(model, params)
@@ -121,6 +140,12 @@ def run_training(model, params, device):
 
     best_acc = -1.0
     best_weights = None
+    curve = {"epoch": [], "train_acc": [], "val_acc": [], "val_robust": []}
+    if params.training.track_test:
+        x_test, y_test = load_mnist_tensors(params, train=False)
+        x_test = x_test[: params.training.track_samples]
+        y_test = y_test[: params.training.track_samples]
+        curve.update({"test_clean": [], "test_robust": []})
 
     attack = params.training.train_attack
     label = f"{attack} adversarial" if adversarial(params) else "clean"
@@ -141,6 +166,16 @@ def run_training(model, params, device):
             + (f"  {attack} acc: {val_rob:.4f}" if val_rob is not None else "")
         )
 
+        curve["epoch"].append(epoch)
+        curve["train_acc"].append(tr_acc)
+        curve["val_acc"].append(val_acc)
+        curve["val_robust"].append(val_rob)
+        if params.training.track_test:
+            clean, robust = test_accuracies(model, x_test, y_test, params, device)
+            curve["test_clean"].append(clean)
+            curve["test_robust"].append(robust)
+            print(f"  Test  acc: {clean:.4f}  robust acc: {robust:.4f}")
+
         score = val_rob if val_rob is not None else val_acc
         if score > best_acc:
             best_acc = score
@@ -156,3 +191,7 @@ def run_training(model, params, device):
 
     model.load_state_dict(best_weights)
     print(f"\nTraining done. Best val score: {best_acc:.4f}")
+    if params.training.track_test:
+        save_json(curve, params, f"training_curve_{params.model.tag}")
+        plot_training_curve(curve, params)
+    return curve
