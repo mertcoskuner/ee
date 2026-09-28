@@ -50,9 +50,7 @@ def load_mnist_tensors(params, train=False):
     Images are float32 tensors of shape (N, 1, 28, 28) in [0, 1]; labels
     are int64 tensors of shape (N,). Download missing data when needed.
     """
-    ds = datasets.MNIST(
-        params.data_loader.data_dir, train=train, download=True
-    )
+    ds = datasets.MNIST(params.data_loader.data_dir, train=train, download=True)
     return ds.data.float().div(255.0).unsqueeze(1), ds.targets.long()
 
 

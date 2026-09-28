@@ -78,9 +78,7 @@ def validate(model, loader, device, params):
             with torch.no_grad():
                 correct_adv += model(adv).argmax(1).eq(labels).sum().item()
         n += imgs.size(0)
-    return correct / n, (
-        correct_adv / n if params.training.adv_train else None
-    )
+    return correct / n, (correct_adv / n if params.training.adv_train else None)
 
 
 def run_training(model, params, device):
@@ -91,9 +89,7 @@ def run_training(model, params, device):
     checkpoint.
     """
     train_loader, val_loader = get_loaders(params)
-    optimizer = torch.optim.Adam(
-        model.parameters(), lr=params.training.learning_rate
-    )
+    optimizer = torch.optim.Adam(model.parameters(), lr=params.training.learning_rate)
 
     best_acc = -1.0
     best_weights = None

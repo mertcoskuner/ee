@@ -1,1 +1,1 @@
-"""MNIST CNN copied unchanged from SU-Intelligent-systems-Lab/Deep-learning."""
+"""MNIST classifier architecture used by the attack experiments."""

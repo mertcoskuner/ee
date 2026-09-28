@@ -7,8 +7,7 @@ from models.CNN import MNIST_CNN
 
 def build_model(params):
     """Construct MNIST_CNN with the configured number of output classes."""
-    # MNIST_CNN takes an unused ``norm`` argument that has no default.
-    return MNIST_CNN(norm=None, num_classes=params.model.num_classes)
+    return MNIST_CNN(num_classes=params.model.num_classes)
 
 
 def load_weights(model, params, device):
@@ -18,8 +17,6 @@ def load_weights(model, params, device):
     model in evaluation mode. Input gradients remain available to
     attacks.
     """
-    model.load_state_dict(
-        torch.load(params.model.weights, map_location=device)
-    )
+    model.load_state_dict(torch.load(params.model.weights, map_location=device))
     model.requires_grad_(False)
     return model.eval()

@@ -25,9 +25,7 @@ def args_parser(argv=None):
         default=RunParams.mode,
     )
     parser.add_argument("--epochs", type=int, default=TrainingParams.epochs)
-    parser.add_argument(
-        "--lr", type=float, default=TrainingParams.learning_rate
-    )
+    parser.add_argument("--lr", type=float, default=TrainingParams.learning_rate)
     parser.add_argument("--device", default=RunParams.device)
     parser.add_argument("--seed", type=int, default=RunParams.seed)
     parser.add_argument("--data_dir", default=DataLoaderParams.data_dir)
@@ -43,23 +41,15 @@ def args_parser(argv=None):
             f"--{name}", type=int, default=getattr(DataLoaderParams, name)
         )
     parser.add_argument("--adv_train", action="store_true")
-    parser.add_argument(
-        "--train_steps", type=int, default=TrainingParams.train_steps
-    )
-    parser.add_argument(
-        "--train_alpha", type=float, default=TrainingParams.train_alpha
-    )
-    parser.add_argument(
-        "--log_interval", type=int, default=TrainingParams.log_interval
-    )
+    parser.add_argument("--train_steps", type=int, default=TrainingParams.train_steps)
+    parser.add_argument("--train_alpha", type=float, default=TrainingParams.train_alpha)
+    parser.add_argument("--log_interval", type=int, default=TrainingParams.log_interval)
     parser.add_argument(
         "--attack",
         choices=["fgsm", "pgd_linf", "pgd_l2", "all"],
         default=AttackParams.attack,
     )
-    parser.add_argument(
-        "--eps_linf", type=float, default=AttackParams.eps_linf
-    )
+    parser.add_argument("--eps_linf", type=float, default=AttackParams.eps_linf)
     parser.add_argument("--eps_l2", type=float, default=AttackParams.eps_l2)
     parser.add_argument("--steps", type=int, default=AttackParams.steps)
     args = parser.parse_args(argv)

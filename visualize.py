@@ -106,9 +106,7 @@ def run_visualize(model, params, device):
             label, fontsize=8, rotation=0, ha="right", va="center", labelpad=6
         )
         if is_delta:
-            cb = fig.colorbar(
-                im, ax=axes[r, :].tolist(), fraction=0.012, pad=0.01
-            )
+            cb = fig.colorbar(im, ax=axes[r, :].tolist(), fraction=0.012, pad=0.01)
             cb.ax.tick_params(labelsize=6)
     save_fig(fig, params, f"adv_examples_{params.model.tag}")
 
@@ -153,13 +151,10 @@ def run_tsne(model, params, device):
         preds[name] = predict(model, x_adv, device).numpy()
         metrics[name] = {
             "model_acc": float((preds[name] == y.numpy()).mean() * 100),
-            "knn_acc": float(
-                (knn.predict(feats[name]) == y.numpy()).mean() * 100
-            ),
+            "knn_acc": float((knn.predict(feats[name]) == y.numpy()).mean() * 100),
             "silhouette": float(silhouette_score(feats[name], y.numpy())),
             "shift": float(
-                np.linalg.norm(feats[name] - feats["clean"], axis=1).mean()
-                / inter
+                np.linalg.norm(feats[name] - feats["clean"], axis=1).mean() / inter
             ),
         }
         m = metrics[name]
@@ -172,9 +167,7 @@ def run_tsne(model, params, device):
     z = PCA(n_components=50, random_state=0).fit_transform(
         np.concatenate([feats[k] for k in sets])
     )
-    z = TSNE(
-        n_components=2, perplexity=30, init="pca", random_state=0
-    ).fit_transform(z)
+    z = TSNE(n_components=2, perplexity=30, init="pca", random_state=0).fit_transform(z)
     z = {k: z[i * N_TSNE : (i + 1) * N_TSNE] for i, k in enumerate(sets)}
 
     titles = {
@@ -194,9 +187,7 @@ def run_tsne(model, params, device):
             ax.scatter(*z["clean"].T, s=4, color=CONTEXT, linewidths=0)
         ok = preds[name] == y_np
         ax.scatter(*z[name][ok].T, s=5, color=BLUE, linewidths=0, alpha=0.85)
-        ax.scatter(
-            *z[name][~ok].T, s=5, color=ORANGE, linewidths=0, alpha=0.95
-        )
+        ax.scatter(*z[name][~ok].T, s=5, color=ORANGE, linewidths=0, alpha=0.95)
         for d in range(10):
             cx, cy = np.median(z["clean"][y_np == d], axis=0)
             ax.text(
@@ -222,9 +213,7 @@ def run_tsne(model, params, device):
                     color=MUTED,
                     ha="center",
                     va="center",
-                    path_effects=[
-                        pe.withStroke(linewidth=2.5, foreground="white")
-                    ],
+                    path_effects=[pe.withStroke(linewidth=2.5, foreground="white")],
                 )
         m = metrics[name]
         ax.set_title(

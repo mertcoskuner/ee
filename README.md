@@ -15,7 +15,7 @@ Learning Models Resistant to Adversarial Attacks* (ICLR 2018). Layout: `main.py`
 | `gradcam.py` | Grad-CAM heatmaps on clean vs. adversarial digits |
 | `src/attacks/` | separate `fgsm.py`, `pgd_linf.py`, `pgd_l2.py`; dispatch in `__init__.py` |
 | `src/utils/` | shared attack, data, evaluation, model, plotting and seed helpers |
-| `models/CNN.py` | `MNIST_CNN`, copied unchanged from [SU-Intelligent-systems-Lab/Deep-learning](https://github.com/SU-Intelligent-systems-Lab/Deep-learning) |
+| `models/CNN.py` | `MNIST_CNN`, adapted from [SU-Intelligent-systems-Lab/Deep-learning](https://github.com/SU-Intelligent-systems-Lab/Deep-learning) |
 
 ```bash
 pip install -r requirements.txt
