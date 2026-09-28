@@ -46,8 +46,16 @@ def load_surrogate(params, device):
     tag = checkpoint_tag(
         a.surrogate_model, a.surrogate_optimizer, a.surrogate_train_attack
     )
+    path = checkpoint_path(params, tag)
+    if not os.path.exists(path):
+        raise SystemExit(
+            f"error: surrogate checkpoint {path} not found. Train it first with "
+            f"--mode train --model {a.surrogate_model} --optimizer "
+            f"{a.surrogate_optimizer} --train_attack {a.surrogate_train_attack} "
+            "and the same --checkpoint_dir."
+        )
     model_params = dataclasses.replace(
-        params.model, model=a.surrogate_model, weights=checkpoint_path(params, tag)
+        params.model, model=a.surrogate_model, weights=path
     )
     surrogate_params = dataclasses.replace(params, model=model_params)
     model = MODELS.get(a.surrogate_model)(model_params).to(device)
