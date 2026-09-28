@@ -4,6 +4,7 @@ import json
 import os
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 ALERT, INK = "#e34948", "#0b0b0b"
 
@@ -82,6 +83,7 @@ def plot_training_curve(curve, params):
     fig, ax = plt.subplots(figsize=(6.5, 3.8))
     series = [
         ("train_acc", "train (training inputs)", "#52514e", "-"),
+        ("val_acc", "validation clean", "#2a78d6", ":"),
         ("test_clean", "test clean", "#2a78d6", "-"),
         ("test_robust", "test robust", "#eb6834", "-"),
         ("val_robust", "validation robust", "#eb6834", ":"),
@@ -90,6 +92,7 @@ def plot_training_curve(curve, params):
         values = curve.get(key)
         if values and values[0] is not None:
             ax.plot(curve["epoch"], values, style, color=color, label=label)
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.set_xlabel("epoch")
     ax.set_ylabel("accuracy")
     ax.set_ylim(0, 1)
@@ -127,12 +130,63 @@ def plot_label_shares(counts, params, partition):
 
 
 def print_federated_summary(summary, fields):
-    """Print the final accuracy of every federated combination."""
+    """Print the final accuracy (and privacy budget) of every federated run."""
     print("\n=== Federated summary ===")
-    print("  " + "  ".join(f"{n:>18s}" for n in fields) + "  final acc")
+    print("  " + "  ".join(f"{n:>18s}" for n in fields) + "  final acc   epsilon")
     for row in summary:
         acc = "skipped" if row["final_acc"] is None else f"{row['final_acc']:.4f}"
-        print("  " + "  ".join(f"{row[n]:>18s}" for n in fields) + f"  {acc}")
+        eps = row.get("dp_epsilon")
+        eps = "-" if eps is None else f"{eps:.3f}"
+        line = "  ".join(f"{row[n]:>18s}" for n in fields)
+        print(f"  {line}  {acc:>9s}  {eps:>8s}")
+
+
+def plot_dp_mechanisms(report, params):
+    """Save the error of DP mechanisms and properties against epsilon."""
+    eps = report["epsilons"]
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3.6))
+    axes[0].plot(eps, report["laplace_error"], "o-", label="Laplace")
+    gauss = [(e, g) for e, g in zip(eps, report["gaussian_error"]) if g is not None]
+    if gauss:
+        axes[0].plot(*zip(*gauss), "s-", label="Gaussian (delta 1e-5)")
+    axes[0].plot(eps, report["laplace_clamped_error"], "o--", label="Laplace, clamped")
+    axes[0].set_title("count query: mean absolute error", fontsize=9)
+    axes[1].plot(eps, report["rr_error"], "o-", color="#eb6834")
+    axes[1].set_title("randomized response: fraction error", fontsize=9)
+    axes[2].plot(eps, report["composition_error"], "o-", label="k queries, eps/k each")
+    axes[2].plot(eps, report["group_error"], "s-", label="group of k, eps")
+    axes[2].set_title(f"composition and group privacy (k={report['k']})", fontsize=9)
+    for ax in axes:
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlabel(r"$\varepsilon$")
+        ax.grid(alpha=0.3)
+    axes[0].legend(frameon=False, fontsize=7)
+    axes[2].legend(frameon=False, fontsize=7)
+    fig.tight_layout()
+    save_fig(fig, params, "dp_mechanisms")
+
+
+def plot_dp_accounting(report, params):
+    """Save epsilon against training steps for each accounting method."""
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    for key, label in (
+        ("basic", "basic composition"),
+        ("advanced", "advanced composition"),
+        ("rdp_full_batch", "RDP, no subsampling"),
+        ("rdp_subsampled", "RDP, subsampled (DP-SGD)"),
+    ):
+        ax.plot(report["steps"], report[key], label=label)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("training steps")
+    ax.set_ylabel(r"$\varepsilon$ at $\delta$ = " + f"{report['delta']:g}")
+    ax.set_title(
+        f"noise {report['noise']}, sampling rate {report['rate']:.4f}", fontsize=9
+    )
+    ax.grid(alpha=0.3)
+    ax.legend(frameon=False, fontsize=8)
+    save_fig(fig, params, "dp_accounting")
 
 
 def print_test_summary(rows, params):

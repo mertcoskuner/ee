@@ -11,6 +11,8 @@ MODES = [
     "gradcam",
     "geometry",
     "defense",
+    "dp_mechanisms",
+    "dp_accounting",
     "federated",
 ]
 

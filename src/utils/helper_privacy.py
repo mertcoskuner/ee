@@ -1,0 +1,40 @@
+"""Privacy budgets spent by DP-SGD training and DP federated learning."""
+
+from src.privacy import dp_sgd_epsilon
+
+
+def training_size(params):
+    """Return the number of MNIST training images after the validation split."""
+    return 60000 - params.data_loader.validation_size
+
+
+def dp_sgd_rate(params):
+    """Return the Poisson sampling rate batch_size / training size."""
+    return params.data_loader.batch_size / training_size(params)
+
+
+def training_epsilon(params, epochs=None):
+    """Return the epsilon DP-SGD spends in `epochs` passes (default: all epochs)."""
+    p = params.privacy
+    q = dp_sgd_rate(params)
+    epochs = params.training.epochs if epochs is None else epochs
+    steps = epochs * max(1, round(1 / q))
+    return dp_sgd_epsilon(q, p.dp_noise, steps, p.dp_delta)
+
+
+def federated_epsilon(fl):
+    """Return the epsilon of a DP federated run, or None without DP.
+
+    Central DP (DP-FedAvg) protects each client's participation: a
+    subsampled Gaussian mechanism with rate `participation` over `rounds`
+    steps. Local DP protects each client against the server: its update
+    is clipped to dp_clip, so any change of its data moves it by up to
+    2 dp_clip, and noise dp_noise * dp_clip gives multiplier dp_noise / 2,
+    composed over the rounds the client is expected to join.
+    """
+    if fl.dp == "none" or fl.dp_noise == 0:
+        return None if fl.dp == "none" else float("inf")
+    if fl.dp == "central":
+        return dp_sgd_epsilon(fl.participation, fl.dp_noise, fl.rounds, fl.dp_delta)
+    rounds = max(1, round(fl.rounds * fl.participation))
+    return dp_sgd_epsilon(1.0, fl.dp_noise / 2, rounds, fl.dp_delta)

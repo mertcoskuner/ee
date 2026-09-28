@@ -8,13 +8,14 @@ from .data_loader_params import DataLoaderParams, get_data_loader_params
 from .defense_params import DefenseParams, get_defense_params
 from .federated_params import FederatedParams, get_federated_params
 from .model_params import ModelParams, get_model_params
+from .privacy_params import PrivacyParams, get_privacy_params
 from .run_params import RunParams, get_run_params
 from .training_params import TrainingParams, get_training_params
 
 
 @dataclass
 class ExperimentParams:
-    """Group data, training, attack, backdoor, defense, FL, model, and run settings."""
+    """Group data, training, attack, backdoor, defense, FL, privacy, model, run."""
 
     data_loader: DataLoaderParams
     training: TrainingParams
@@ -22,6 +23,7 @@ class ExperimentParams:
     backdoor: BackdoorParams
     defense: DefenseParams
     federated: FederatedParams
+    privacy: PrivacyParams
     model: ModelParams
     run: RunParams
 
@@ -35,6 +37,7 @@ def get_params(args) -> ExperimentParams:
         backdoor=get_backdoor_params(args),
         defense=get_defense_params(args),
         federated=get_federated_params(args),
+        privacy=get_privacy_params(args),
         model=get_model_params(args),
         run=get_run_params(args),
     )

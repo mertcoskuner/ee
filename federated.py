@@ -19,6 +19,7 @@ from src.utils.helper_plot import (
     print_federated_summary,
     save_json,
 )
+from src.utils.helper_privacy import federated_epsilon
 from src.utils.helper_run import checkpoint_path, set_seed
 
 matplotlib.use("Agg")
@@ -61,7 +62,8 @@ def describe(fl):
     return (
         f"partition {fl.partition} | local {fl.local} | server {fl.server_opt} | "
         f"aggregator {fl.aggregator}{group} | attack {fl.attack} "
-        f"({num_byzantine(fl)}/{fl.clients} Byzantine, f={assumed_attackers(fl)})"
+        f"({num_byzantine(fl)}/{fl.clients} Byzantine, f={assumed_attackers(fl)}) | "
+        f"dp {fl.dp}"
     )
 
 
@@ -93,7 +95,10 @@ def run_federated(model, params, device):
             partitions.add(fl.partition)
             plot_label_shares(counts, params, fl.partition)
         runs.append({"tag": fl_run_tag(fl), "history": history})
-        summary.append({**row, "final_acc": history["test_acc"][-1]})
+        eps = federated_epsilon(fl)
+        if eps is not None:
+            print(f"  Privacy spent: epsilon {eps:.3f} (delta {fl.dp_delta})")
+        summary.append({**row, "final_acc": history["test_acc"][-1], "dp_epsilon": eps})
     if len(combos) > 1:
         print_federated_summary(summary, SWEEP_FIELDS)
     save_json(

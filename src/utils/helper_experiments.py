@@ -24,13 +24,18 @@ FL_REGISTRIES = {"aggregator": AGGREGATORS, "attack": FL_ATTACKS}
 CENTRAL_AXES = ["model", "optimizer", "train_attack", "backdoor"]
 
 
-def checkpoint_tag(model, optimizer, train_attack="none", backdoor="none"):
-    """Return the checkpoint stem, e.g. best_cnn_adam_adv-fgsm or best_cnn_adam_bd-blend."""
+def checkpoint_tag(model, optimizer, train_attack="none", backdoor="none", dp=None):
+    """Return the checkpoint stem, e.g. best_cnn_adam_adv-fgsm or best_cnn_adam_dp1.
+
+    dp is the DP-SGD noise multiplier, or None without DP.
+    """
     tag = f"best_{model}_{optimizer}"
     if train_attack != "none":
         tag += f"_adv-{train_attack}"
     if backdoor != "none":
         tag += f"_bd-{backdoor}"
+    if dp is not None:
+        tag += f"_dp{dp:g}"
     return tag
 
 
@@ -55,7 +60,8 @@ def central_runs(params):
     for model, optimizer, attack, backdoor in itertools.product(
         models, optimizers, attacks, backdoors
     ):
-        tag = checkpoint_tag(model, optimizer, attack, backdoor)
+        dp = params.privacy.dp_noise if params.privacy.dp else None
+        tag = checkpoint_tag(model, optimizer, attack, backdoor, dp)
         path = checkpoint_path(params, tag)
         run = {
             "model": model,

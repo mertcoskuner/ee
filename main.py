@@ -10,6 +10,7 @@ from defense import run_defense
 from federated import run_federated
 from geometry import run_geometry
 from gradcam import run_gradcam
+from privacy import run_dp_accounting, run_dp_mechanisms
 from src.params import get_params
 from src.utils.helper_experiments import central_runs
 from src.utils.helper_model import build_model
@@ -35,6 +36,8 @@ RUNNERS = {
     "gradcam": run_gradcam,
     "geometry": run_geometry,
     "defense": run_defense,
+    "dp_mechanisms": run_dp_mechanisms,
+    "dp_accounting": run_dp_accounting,
     "federated": run_federated,
 }
 

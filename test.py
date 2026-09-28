@@ -2,7 +2,8 @@
 
 from src.attacks import attack_label
 from src.backdoors import attack_success_rate, build_backdoor
-from src.utils.helper_data import load_test_set
+from src.privacy import membership_inference
+from src.utils.helper_data import load_test_set, training_tensors
 from src.utils.helper_eval import (
     accuracy,
     evasion_success_rate,
@@ -11,6 +12,7 @@ from src.utils.helper_eval import (
 )
 from src.utils.helper_model import load_reference, load_surrogate, load_weights
 from src.utils.helper_plot import save_json
+from src.utils.helper_privacy import training_epsilon
 
 
 def evaluate_attacks(model, params, device, reference_clean=None, save=True):
@@ -26,7 +28,10 @@ def evaluate_attacks(model, params, device, reference_clean=None, save=True):
     - "<attack>_asr": attack success rate, the share of correctly classified
       images the attack turns wrong;
     - "backdoor_asr": for a backdoored model, the share of non-target images
-      the trigger sends to the target class.
+      the trigger sends to the target class;
+    - "dp_epsilon": the DP-SGD privacy budget of a model trained with --dp;
+    - "mia_auc" and "mia_advantage": with --mia, how well a loss-threshold
+      membership inference attack tells training images from test images.
     With --surrogate_model the attacks are crafted on the surrogate and
     transferred (grey- or black-box); otherwise they are white-box. With
     save, the metrics and per-class accuracies go to test_<tag>.json.
@@ -73,6 +78,21 @@ def evaluate_attacks(model, params, device, reference_clean=None, save=True):
         print(
             f"  Backdoor {params.backdoor.backdoor} -> class {target}: "
             f"attack success rate {asr:.4f}"
+        )
+    if params.privacy.dp:
+        results["dp_epsilon"] = training_epsilon(params)
+        print(
+            f"  DP-SGD privacy: epsilon {results['dp_epsilon']:.3f} "
+            f"(delta {params.privacy.dp_delta})"
+        )
+    if params.privacy.mia:
+        n = params.privacy.mia_samples
+        members = training_tensors(params, n)
+        non_members = (x[:n], y[:n])
+        results.update(membership_inference(model, members, non_members, device))
+        print(
+            f"  Membership inference: AUC {results['mia_auc']:.4f}, "
+            f"advantage {results['mia_advantage']:.4f}"
         )
     if not save:
         return results

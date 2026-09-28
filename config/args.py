@@ -14,12 +14,14 @@ from src.params.backdoor_params import BackdoorParams
 from src.params.data_loader_params import DataLoaderParams
 from src.params.defense_params import DefenseParams
 from src.params.federated_params import (
+    DP_MODES,
     LOCAL_OBJECTIVES,
     PARTITIONS,
     SERVER_OPTIMIZERS,
     FederatedParams,
 )
 from src.params.model_params import ModelParams
+from src.params.privacy_params import PrivacyParams
 from src.params.run_params import MODES, RunParams
 from src.params.training_params import OPTIMIZERS, TrainingParams
 
@@ -250,6 +252,34 @@ def args_parser(argv=None):
         "--fl_assumed_byzantine", type=int, default=FederatedParams.assumed_byzantine
     )
     parser.add_argument("--fl_alie_z", type=float, default=FederatedParams.alie_z)
+    parser.add_argument(
+        "--fl_dp",
+        nargs="+",
+        choices=DP_MODES,
+        default=["none"],
+        help="differential privacy: none, central (DP-FedAvg), or local",
+    )
+    for name in ("dp_clip", "dp_noise", "dp_delta"):
+        parser.add_argument(
+            f"--fl_{name}", type=float, default=getattr(FederatedParams, name)
+        )
+
+    parser.add_argument("--dp", action="store_true", help="train with DP-SGD")
+    parser.add_argument("--dp_noise", type=float, default=PrivacyParams.dp_noise)
+    parser.add_argument("--dp_clip", type=float, default=PrivacyParams.dp_clip)
+    parser.add_argument("--dp_delta", type=float, default=PrivacyParams.dp_delta)
+    parser.add_argument(
+        "--mia", action="store_true", help="also run membership inference in test"
+    )
+    parser.add_argument("--mia_samples", type=int, default=PrivacyParams.mia_samples)
+    parser.add_argument(
+        "--dp_epsilons",
+        type=float,
+        nargs="+",
+        default=[0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0],
+        help="privacy budgets compared in --mode dp_mechanisms",
+    )
+    parser.add_argument("--dp_trials", type=int, default=PrivacyParams.dp_trials)
     parser.add_argument("--fl_clip_norm", type=float, default=FederatedParams.clip_norm)
 
     args = parser.parse_args(argv)
@@ -287,6 +317,8 @@ def args_parser(argv=None):
         "fl_cc_iterations",
         "fl_gm_iterations",
         "fl_eval_every",
+        "mia_samples",
+        "dp_trials",
     ):
         value = getattr(args, name)
         if value is not None and value <= 0:
@@ -344,9 +376,22 @@ def args_parser(argv=None):
         "fl_server_tau",
         "fl_kd_temperature",
         "fl_cc_tau",
+        "fl_dp_clip",
+        "dp_clip",
     ):
         if getattr(args, name) == 0:
             parser.error(f"--{name} must be positive")
+    for name in ("dp_noise", "dp_clip", "fl_dp_noise", "fl_dp_clip"):
+        value = getattr(args, name)
+        if not math.isfinite(value) or value < 0:
+            parser.error(f"--{name} must be finite and nonnegative")
+    for name in ("dp_delta", "fl_dp_delta"):
+        if not 0 < getattr(args, name) < 1:
+            parser.error(f"--{name} must be in (0, 1)")
+    if any(not math.isfinite(e) or e <= 0 for e in args.dp_epsilons):
+        parser.error("--dp_epsilons must be positive")
+    if args.dp and args.l1 > 0:
+        parser.error("--dp cannot be combined with --l1 (the penalty is not clipped)")
     for name in ("num_workers", "patience", "fp_epochs", "trigger_seed"):
         if getattr(args, name) < 0:
             parser.error(f"--{name} must be nonnegative")

@@ -60,7 +60,9 @@ class Server:
     round samples participants, collects benign pseudo-gradients, adds the
     attackers' updates (trained on flipped labels or crafted from the
     benign ones), aggregates them, and applies the result with the server
-    optimizer.
+    optimizer. With central differential privacy (DP-FedAvg) the server
+    clips every update, weighs clients equally, and adds Gaussian noise to
+    the aggregate.
     """
 
     def __init__(self, model, clients, num_byzantine, params, device):
@@ -111,13 +113,29 @@ class Server:
                 updates[i] = u
 
         order = benign + byzantine
-        aggregate = self.aggregator(
-            [updates[i] for i in order], [len(self.clients[i]) for i in order]
-        )
+        received = [updates[i] for i in order]
+        weights = [len(self.clients[i]) for i in order]
+        if self.fl.dp == "central":
+            received = [self.clip(u) for u in received]
+            weights = [1] * len(received)
+        aggregate = self.aggregator(received, weights)
+        if self.fl.dp == "central":
+            aggregate = aggregate + self.central_noise(aggregate, len(received))
         self.apply(aggregate)
         if self.control is not None and control_deltas:
             self.update_control(control_deltas)
         return sum(self.clients[i].last_loss for i in benign) / max(len(benign), 1)
+
+    def clip(self, update):
+        """Scale update to L2 norm at most dp_clip."""
+        norm = update.norm().clamp(min=1e-12)
+        return update * (self.fl.dp_clip / norm).clamp(max=1)
+
+    def central_noise(self, aggregate, count):
+        """Return N(0, (dp_noise * dp_clip / count)^2) noise for the aggregate."""
+        std = self.fl.dp_noise * self.fl.dp_clip / count
+        noise = torch.randn(aggregate.shape, generator=self.generator) * std
+        return noise.to(aggregate.device)
 
     def update_control(self, control_deltas):
         """Add the participants' SCAFFOLD control changes to the server control.
