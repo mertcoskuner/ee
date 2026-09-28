@@ -18,7 +18,14 @@ def set_seed(seed):
 
 
 def resolve_device(name):
-    """Return the torch device for name; "auto" picks CUDA, then MPS, then CPU."""
+    """Return the torch device for name; "auto" picks CUDA, then MPS, then CPU.
+
+    Exit with a hint when a requested GPU backend is not available.
+    """
+    if name.startswith("cuda") and not torch.cuda.is_available():
+        raise SystemExit(f"error: --device {name} requested but CUDA is not available")
+    if name == "mps" and not torch.backends.mps.is_available():
+        raise SystemExit("error: --device mps requested but MPS is not available")
     if name != "auto":
         return torch.device(name)
     if torch.cuda.is_available():

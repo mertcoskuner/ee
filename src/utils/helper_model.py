@@ -20,8 +20,14 @@ def load_weights(model, params, device):
 
     Map weights to device, disable parameter gradients, and return the
     model in evaluation mode. Input gradients remain available to
-    attacks.
+    attacks. Exit with a hint when the checkpoint has not been trained.
     """
+    if not os.path.exists(params.model.weights):
+        raise SystemExit(
+            f"error: checkpoint {params.model.weights} not found. Train it first "
+            "with --mode train (or --mode both) and the same --model, --optimizer, "
+            "--train_attack, --backdoor and --checkpoint_dir options."
+        )
     model.load_state_dict(torch.load(params.model.weights, map_location=device))
     model.requires_grad_(False)
     return model.eval()
