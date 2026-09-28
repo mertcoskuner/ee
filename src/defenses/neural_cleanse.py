@@ -4,39 +4,70 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from src.utils.helper_stats import anomaly_indices
 
-def reverse_trigger(model, x, target, steps, lam, lr, batch_size=128):
-    """Return (mask, pattern) that flips clean inputs x to class target.
 
-    Optimize an unconstrained mask and pattern through a sigmoid so both
-    stay in [0, 1], applying x' = (1 - m) * x + m * p and minimizing
-    CE(model(x'), target) + lam * ||m||_1 on random minibatches of x.
+def reverse_trigger(
+    model,
+    x,
+    target,
+    steps,
+    init_cost,
+    lr,
+    batch_size=128,
+    epoch_steps=10,
+    success_threshold=0.99,
+    patience=5,
+    multiplier=1.5,
+):
+    """Return the smallest (mask, pattern) that flips clean x to target.
+
+    Stamp inputs as x' = (1 - m) * x + m * p with m and p kept in [0, 1]
+    by a tanh parametrization, and minimize CE(model(x'), target) +
+    cost * ||m||_1 with Adam on random minibatches. As in the original
+    implementation, every epoch_steps steps the cost is multiplied by
+    multiplier after patience epochs with success at least
+    success_threshold and divided by multiplier ** 1.5 after patience
+    epochs below it; the smallest mask reaching the threshold is kept.
     """
     shape = (1, *x.shape[1:])
-    mask_raw = torch.full(shape, -3.0, device=x.device, requires_grad=True)
+    mask_raw = torch.zeros(shape, device=x.device, requires_grad=True)
     pattern_raw = torch.zeros(shape, device=x.device, requires_grad=True)
-    optimizer = torch.optim.Adam([mask_raw, pattern_raw], lr=lr)
+    optimizer = torch.optim.Adam([mask_raw, pattern_raw], lr=lr, betas=(0.5, 0.9))
     labels = torch.full((batch_size,), target, device=x.device)
-    for _ in range(steps):
+    cost, up, down = init_cost, 0, 0
+    best, best_norm = None, float("inf")
+    hits = 0
+    for step in range(1, steps + 1):
         idx = torch.randint(0, len(x), (batch_size,), device=x.device)
-        mask, pattern = torch.sigmoid(mask_raw), torch.sigmoid(pattern_raw)
-        stamped = (1 - mask) * x[idx] + mask * pattern
-        loss = F.cross_entropy(model(stamped), labels) + lam * mask.sum()
+        mask = torch.tanh(mask_raw) / 2 + 0.5
+        pattern = torch.tanh(pattern_raw) / 2 + 0.5
+        logits = model((1 - mask) * x[idx] + mask * pattern)
+        loss = F.cross_entropy(logits, labels) + cost * mask.sum()
         grads = torch.autograd.grad(loss, [mask_raw, pattern_raw])
         mask_raw.grad, pattern_raw.grad = grads
         optimizer.step()
-    return torch.sigmoid(mask_raw).detach(), torch.sigmoid(pattern_raw).detach()
+        hits += (logits.argmax(1) == target).sum().item()
+        if step % epoch_steps:
+            continue
+        rate, hits = hits / (epoch_steps * batch_size), 0
+        if rate >= success_threshold and mask.sum().item() < best_norm:
+            best_norm = mask.sum().item()
+            best = (mask.detach().clone(), pattern.detach().clone())
+        up, down = (up + 1, 0) if rate >= success_threshold else (0, down + 1)
+        if up >= patience:
+            cost, up = cost * multiplier, 0
+        elif down >= patience:
+            cost, down = cost / multiplier**1.5, 0
+    if best is None:
+        best = (
+            (torch.tanh(mask_raw) / 2 + 0.5).detach(),
+            (torch.tanh(pattern_raw) / 2 + 0.5).detach(),
+        )
+    return best
 
 
-def anomaly_indices(norms):
-    """Return MAD-based anomaly indices |norm - median| / (1.4826 * MAD)."""
-    norms = np.asarray(norms, dtype=float)
-    median = np.median(norms)
-    mad = 1.4826 * np.median(np.abs(norms - median))
-    return np.abs(norms - median) / (mad + 1e-12)
-
-
-def neural_cleanse(model, x, num_classes, steps, lam, lr, threshold):
+def neural_cleanse(model, x, num_classes, steps, init_cost, lr, threshold):
     """Reverse-engineer one trigger per class and flag outlier classes.
 
     Return a dict with per-class mask L1 norms, attack success rates of
@@ -47,7 +78,7 @@ def neural_cleanse(model, x, num_classes, steps, lam, lr, threshold):
     """
     masks, patterns, norms, success = [], [], [], []
     for target in range(num_classes):
-        mask, pattern = reverse_trigger(model, x, target, steps, lam, lr)
+        mask, pattern = reverse_trigger(model, x, target, steps, init_cost, lr)
         with torch.no_grad():
             stamped = (1 - mask) * x + mask * pattern
             rate = (model(stamped).argmax(1) == target).float().mean().item()

@@ -18,7 +18,7 @@ class AttackParams:
     lbfgs_iters: int = 20
     cw_c: float = 1.0
     cw_kappa: float = 0.0
-    cw_steps: int = 100
+    cw_steps: int = 1000
     cw_lr: float = 0.01
 
     @property

@@ -11,8 +11,8 @@ class DefenseParams:
 
     defense: str = "all"
     nc_samples: int = 1000
-    nc_steps: int = 300
-    nc_lambda: float = 1e-2
+    nc_steps: int = 1000
+    nc_lambda: float = 1e-3
     nc_lr: float = 0.1
     nc_threshold: float = 2.0
     fp_max_drop: float = 0.04
@@ -21,7 +21,7 @@ class DefenseParams:
     ls_samples: int = 5000
     ls_components: int = 10
     ls_min_fraction: float = 0.35
-    ls_min_silhouette: float = 0.15
+    ls_threshold: float = 2.0
 
     @property
     def defenses(self) -> list[str]:

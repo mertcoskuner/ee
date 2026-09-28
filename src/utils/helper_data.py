@@ -63,3 +63,15 @@ def load_test_set(params):
             y[: params.data_loader.num_samples],
         )
     return x, y
+
+
+def loader_tensors(loader, limit):
+    """Return up to limit images and labels from a data loader as tensors."""
+    xs, ys, n = [], [], 0
+    for imgs, labels in loader:
+        xs.append(imgs)
+        ys.append(labels)
+        n += len(imgs)
+        if n >= limit:
+            break
+    return torch.cat(xs)[:limit], torch.cat(ys)[:limit]
