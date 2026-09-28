@@ -141,7 +141,7 @@ def print_federated_summary(summary, fields):
     for row in summary:
         acc = "skipped" if row["final_acc"] is None else f"{row['final_acc']:.4f}"
         eps = row.get("dp_epsilon")
-        eps = "-" if eps is None else f"{eps:.3f}"
+        eps = "-" if eps is None else f"{eps:.4g}"
         line = "  ".join(f"{row[n]:>18s}" for n in fields)
         print(f"  {line}  {acc:>9s}  {eps:>8s}")
 
@@ -199,8 +199,9 @@ def print_test_summary(rows, params):
 
     Columns are clean accuracy, its drop against the clean reference,
     robust accuracy and attack success rate (_asr) per attack, and the
-    backdoor attack success rate. Each row's metrics are already saved in
-    its test_<tag>.json file.
+    backdoor attack success rate; "-" marks a metric that does not apply
+    to a row. Each row's metrics are already saved in its test_<tag>.json
+    file.
     """
     seen = list(dict.fromkeys(k for _, res in rows for k in res))
     first = [c for c in ("clean", "clean_drop") if c in seen]
@@ -215,5 +216,11 @@ def print_test_summary(rows, params):
             f"{run['model']:>12s} {run['optimizer']:>10s} "
             f"{run['train_attack']:>13s} {run['backdoor']:>9s}"
         )
-        cells = (res.get(c, float("nan")) for c in columns)
-        print(line + "".join(f"{v:>{w}.4f}" for v, w in zip(cells, widths)))
+        cells = (res.get(c) for c in columns)
+        print(
+            line
+            + "".join(
+                f"{'-':>{w}s}" if v is None else f"{v:>{w}.4f}"
+                for v, w in zip(cells, widths)
+            )
+        )

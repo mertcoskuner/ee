@@ -82,7 +82,7 @@ def run_federated(model, params, device):
         runs.append({"tag": fl_run_tag(fl), "history": history})
         eps = federated_epsilon(fl)
         if eps is not None:
-            print(f"  Privacy spent: epsilon {eps:.3f} (delta {fl.dp_delta})")
+            print(f"  Privacy spent: epsilon {eps:.4g} (delta {fl.dp_delta})")
         summary.append({**row, "final_acc": history["test_acc"][-1], "dp_epsilon": eps})
     if len(combos) > 1:
         print_federated_summary(summary, SWEEP_FIELDS)

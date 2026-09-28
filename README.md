@@ -269,7 +269,8 @@ test metrics per checkpoint, or the final accuracy per federated combination.
 - **Latent separability** splits each class's penultimate features with PCA and 2-means. It flags classes whose
   silhouette is a high outlier by MAD and whose minority cluster is small.
 - **Fine-pruning** prunes the least-active units of the last convolutional layer, or the classifier inputs for MLP and
-  Transformer, until validation accuracy drops by `--fp_max_drop`. It then fine-tunes on clean data.
+  Transformer, until validation accuracy drops by `--fp_max_drop`. It then fine-tunes on clean data. It removes
+  local patch triggers such as BadNets well but can leave an image-wide trigger such as Blend largely intact.
 
 ### Federated learning
 
@@ -294,6 +295,8 @@ test metrics per checkpoint, or the final accuracy per federated combination.
 - **Mechanisms.** The Laplace mechanism adds Laplace(Δ/ε) noise (ε-DP). The Gaussian mechanism uses the classic
   calibration σ = √(2 ln(1.25/δ))·Δ/ε, valid for ε < 1. Randomized response keeps each bit with probability
   e^ε / (1 + e^ε) (ε-local DP).
+- **Composition.** Advanced composition beats basic composition only over many steps; for a few hundred steps it
+  can be looser. RDP with subsampling is far tighter than both.
 - **Accounting.** The RDP accountant uses the exact integer-order bound for the Poisson-subsampled Gaussian mechanism
   and the Balle et al. (2020) conversion to (ε, δ). It matches Opacus to four decimals at the same orders.
 - **DP-SGD.** Each example is included in a batch independently with probability `batch_size / training size`

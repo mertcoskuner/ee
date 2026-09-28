@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 source "$(dirname "$0")/common.sh"
 OUT="$RESULTS/week12_dp_machine_learning"
-DP=(--epochs "$DP_EPOCHS" --optimizer sgd --lr 0.5 --log_interval 1000 --attack none
+DP=(--epochs "$DP_EPOCHS" --optimizer sgd --lr 0.1 --log_interval 1000 --attack none
     --checkpoint_dir "$CKPT/week12_dp_sgd")
 
 section "Week 12: DP in Machine Learning"
