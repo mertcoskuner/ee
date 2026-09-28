@@ -1,22 +1,31 @@
 """Backdoor trigger selection and data-poisoning settings."""
 
-from dataclasses import dataclass
-
-from src.backdoors import BACKDOORS
-from src.utils.helper_params import option
+from dataclasses import dataclass, field
 
 
 @dataclass
 class BackdoorParams:
-    """Backdoor poisoning: trigger, poison rate, and target class."""
+    """Store the trigger(s), poison rate, target class, and trigger shape.
 
-    backdoor: list[str] = option(
-        help="trigger(s) poisoning the training data; none trains without one",
-        choices=lambda: ["none"] + BACKDOORS.names(),
-        default_factory=lambda: ["none"],
+    backdoor lists one or more triggers; each run replaces it with a
+    single name, and "none" trains without poisoning.
+    """
+
+    backdoor: list[str] = field(default_factory=lambda: ["none"])
+    poison_rate: float = 0.1
+    target_class: int = 0
+    trigger_size: int = 4
+    blend_alpha: float = 0.2
+    trigger_seed: int = 0
+
+
+def get_backdoor_params(args) -> BackdoorParams:
+    """Build backdoor settings from validated CLI arguments."""
+    return BackdoorParams(
+        backdoor=args.backdoor,
+        poison_rate=args.poison_rate,
+        target_class=args.target_class,
+        trigger_size=args.trigger_size,
+        blend_alpha=args.blend_alpha,
+        trigger_seed=args.trigger_seed,
     )
-    poison_rate: float = option(0.1, "fraction of training images poisoned", gt=0, lt=1)
-    target_class: int = option(0, "label the trigger maps to", ge=0, le=9)
-    trigger_size: int = option(4, "side of BadNets / dynamic patches", gt=0, le=14)
-    blend_alpha: float = option(0.2, "blend ratio of the Blend trigger", gt=0, lt=1)
-    trigger_seed: int = option(0, "seed of the trigger pattern and poisoned set", ge=0)

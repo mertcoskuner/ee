@@ -2,52 +2,35 @@
 
 from dataclasses import dataclass
 
-from models import MODELS
 from src.attacks import ATTACKS
-
-from src.utils.helper_params import option
 
 
 @dataclass
 class AttackParams:
-    """Evasion attacks: selection, budgets, and optimizer settings."""
+    """Store the attack selection, budgets, optimizer settings, and surrogate.
 
-    attack: list[str] | None = option(
-        None,
-        "attacks to evaluate; none tests clean accuracy only "
-        "(default: all in test mode, none after defenses)",
-        choices=lambda: ["none"] + ATTACKS.names(),
-        allow_all=True,
-    )
-    eps_linf: float = option(0.3, "L-infinity budget of FGSM and PGD-linf", ge=0)
-    eps_l2: float = option(2.0, "L2 budget of PGD-l2", ge=0)
-    steps: int = option(100, "PGD iterations", gt=0)
-    step_linf: float | None = option(
-        None, "PGD-linf step size (default: 2.5 * eps_linf / steps)", gt=0
-    )
-    search_steps: int = option(5, "binary-search steps of L-BFGS and CW", gt=0)
-    lbfgs_c: float = option(1.0, "initial L-BFGS distance weight", gt=0)
-    lbfgs_iters: int = option(20, "L-BFGS-B iterations per search step", gt=0)
-    cw_c: float = option(1.0, "initial CW loss weight", gt=0)
-    cw_kappa: float = option(0.0, "CW confidence margin", ge=0)
-    cw_steps: int = option(1000, "CW Adam steps per search step", gt=0)
-    cw_lr: float = option(0.01, "CW Adam learning rate", gt=0)
-    square_queries: int = option(1000, "Square Attack query budget", gt=0)
-    autoattack_version: str = option(
-        "standard", "AutoAttack version", choices=["standard", "plus", "rand"]
-    )
-    surrogate_model: str | None = option(
-        None,
-        "craft attacks on this surrogate architecture and transfer them "
-        "(default: attack the evaluated model itself, white-box)",
-        choices=MODELS.names,
-    )
-    surrogate_optimizer: str = option(
-        "adam", "optimizer the surrogate checkpoint was trained with"
-    )
-    surrogate_train_attack: str = option(
-        "none", "training attack of the surrogate checkpoint"
-    )
+    attack None selects every attack (test mode) or none (after defenses);
+    ["none"] selects no attack, so only clean accuracy is measured. A
+    surrogate_model crafts attacks on another checkpoint for transfer.
+    """
+
+    attack: list[str] | None = None
+    eps_linf: float = 0.3
+    eps_l2: float = 2.0
+    steps: int = 100
+    step_linf: float | None = None
+    search_steps: int = 5
+    lbfgs_c: float = 1.0
+    lbfgs_iters: int = 20
+    cw_c: float = 1.0
+    cw_kappa: float = 0.0
+    cw_steps: int = 1000
+    cw_lr: float = 0.01
+    square_queries: int = 1000
+    autoattack_version: str = "standard"
+    surrogate_model: str | None = None
+    surrogate_optimizer: str = "adam"
+    surrogate_train_attack: str = "none"
 
     @property
     def attacks(self) -> list[str]:
@@ -71,3 +54,26 @@ class AttackParams:
     def alpha_l2(self) -> float:
         """Return the L2 PGD step size, 2.5 * eps_l2 / steps."""
         return 2.5 * self.eps_l2 / self.steps
+
+
+def get_attack_params(args) -> AttackParams:
+    """Build attack settings from validated CLI arguments."""
+    return AttackParams(
+        attack=args.attack,
+        eps_linf=args.eps_linf,
+        eps_l2=args.eps_l2,
+        steps=args.steps,
+        step_linf=args.step_linf,
+        search_steps=args.search_steps,
+        lbfgs_c=args.lbfgs_c,
+        lbfgs_iters=args.lbfgs_iters,
+        cw_c=args.cw_c,
+        cw_kappa=args.cw_kappa,
+        cw_steps=args.cw_steps,
+        cw_lr=args.cw_lr,
+        square_queries=args.square_queries,
+        autoattack_version=args.autoattack_version,
+        surrogate_model=args.surrogate_model,
+        surrogate_optimizer=args.surrogate_optimizer,
+        surrogate_train_attack=args.surrogate_train_attack,
+    )

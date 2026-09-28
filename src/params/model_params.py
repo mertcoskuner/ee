@@ -1,30 +1,39 @@
 """Model choice, architecture sizes, checkpoint paths, and output tags."""
 
-from dataclasses import dataclass
-
-from models import MODELS
-
-from src.utils.helper_params import option
+from dataclasses import dataclass, field
 
 
 @dataclass
 class ModelParams:
-    """Model: architecture, sizes, and derived checkpoint names."""
+    """Store the architecture(s), their sizes, and derived checkpoint names.
 
-    model: list[str] = option(
-        help="architecture(s) from models/",
-        choices=MODELS.names,
-        allow_all=True,
-        default_factory=lambda: ["cnn"],
+    model lists one or more architectures; each run replaces it with a
+    single name and fills in save_path, weights, and tag.
+    """
+
+    model: list[str] = field(default_factory=lambda: ["cnn"])
+    num_classes: int = 10
+    dropout: float = 0.1
+    hidden_sizes: tuple[int, ...] = (512, 256)
+    patch_size: int = 7
+    dim: int = 64
+    depth: int = 2
+    heads: int = 4
+    mlp_dim: int = 128
+    save_path: str = "best_cnn_adam.pth"
+    weights: str = "best_cnn_adam.pth"
+    tag: str = "best_cnn_adam"
+
+
+def get_model_params(args) -> ModelParams:
+    """Build model settings from validated CLI arguments."""
+    return ModelParams(
+        model=args.model,
+        dropout=args.dropout,
+        hidden_sizes=tuple(args.hidden_sizes),
+        patch_size=args.patch_size,
+        dim=args.dim,
+        depth=args.depth,
+        heads=args.heads,
+        mlp_dim=args.mlp_dim,
     )
-    dropout: float = option(0.1, "dropout rate of MLP and Transformer", ge=0, lt=1)
-    hidden_sizes: tuple[int, ...] = option((512, 256), "MLP hidden layer sizes", gt=0)
-    patch_size: int = option(7, "Transformer patch size (divides 28)", gt=0)
-    dim: int = option(64, "Transformer embedding size", gt=0)
-    depth: int = option(2, "Transformer encoder layers", gt=0)
-    heads: int = option(4, "Transformer attention heads", gt=0)
-    mlp_dim: int = option(128, "Transformer feed-forward size", gt=0)
-    num_classes: int = option(10, cli=False)
-    save_path: str = option("best_cnn.pth", cli=False)
-    weights: str = option("best_cnn.pth", cli=False)
-    tag: str = option("best_cnn", cli=False)

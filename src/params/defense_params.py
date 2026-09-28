@@ -1,40 +1,48 @@
 """Backdoor defense selection and per-defense hyperparameters."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from src.defenses import DEFENSES
-
-from src.utils.helper_params import option
 
 
 @dataclass
 class DefenseParams:
-    """Backdoor defenses: selection and hyperparameters."""
+    """Store the selected defenses and their hyperparameters."""
 
-    defense: list[str] = option(
-        help="backdoor defenses to run",
-        choices=DEFENSES.names,
-        allow_all=True,
-        default_factory=lambda: ["all"],
-    )
-    nc_samples: int = option(1000, "clean images for Neural Cleanse", gt=0)
-    nc_steps: int = option(1000, "Neural Cleanse steps per class", gt=0)
-    nc_lambda: float = option(1e-3, "Neural Cleanse initial mask cost", gt=0)
-    nc_lr: float = option(0.1, "Neural Cleanse Adam learning rate", gt=0)
-    nc_threshold: float = option(2.0, "Neural Cleanse anomaly-index threshold", gt=0)
-    fp_max_drop: float = option(
-        0.04, "Fine-pruning allowed validation accuracy drop", ge=0, le=1
-    )
-    fp_epochs: int = option(1, "Fine-pruning fine-tuning epochs", ge=0)
-    fp_eval_samples: int = option(2000, "Fine-pruning validation images", gt=0)
-    ls_samples: int = option(5000, "training images for latent separability", gt=0)
-    ls_components: int = option(10, "latent separability PCA dimensions", gt=0)
-    ls_min_fraction: float = option(
-        0.35, "largest suspicious minority-cluster share", gt=0, le=0.5
-    )
-    ls_threshold: float = option(2.0, "latent separability anomaly threshold", gt=0)
+    defense: list[str] = field(default_factory=lambda: ["all"])
+    nc_samples: int = 1000
+    nc_steps: int = 1000
+    nc_lambda: float = 1e-3
+    nc_lr: float = 0.1
+    nc_threshold: float = 2.0
+    fp_max_drop: float = 0.04
+    fp_epochs: int = 1
+    fp_eval_samples: int = 2000
+    ls_samples: int = 5000
+    ls_components: int = 10
+    ls_min_fraction: float = 0.35
+    ls_threshold: float = 2.0
 
     @property
     def defenses(self) -> list[str]:
         """Return the selected defense names; "all" selects every one."""
         return DEFENSES.expand(self.defense)
+
+
+def get_defense_params(args) -> DefenseParams:
+    """Build backdoor defense settings from validated CLI arguments."""
+    return DefenseParams(
+        defense=args.defense,
+        nc_samples=args.nc_samples,
+        nc_steps=args.nc_steps,
+        nc_lambda=args.nc_lambda,
+        nc_lr=args.nc_lr,
+        nc_threshold=args.nc_threshold,
+        fp_max_drop=args.fp_max_drop,
+        fp_epochs=args.fp_epochs,
+        fp_eval_samples=args.fp_eval_samples,
+        ls_samples=args.ls_samples,
+        ls_components=args.ls_components,
+        ls_min_fraction=args.ls_min_fraction,
+        ls_threshold=args.ls_threshold,
+    )
