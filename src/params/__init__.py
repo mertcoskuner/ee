@@ -8,6 +8,7 @@ here.
 from dataclasses import dataclass
 
 from .attack_params import AttackParams
+from .backdoor_params import BackdoorParams
 from .data_loader_params import DataLoaderParams
 from .defense_params import DefenseParams
 from .federated_params import FederatedParams
@@ -22,6 +23,7 @@ PARAM_GROUPS = {
     "data_loader": (DataLoaderParams, ""),
     "training": (TrainingParams, ""),
     "attack": (AttackParams, ""),
+    "backdoor": (BackdoorParams, ""),
     "defense": (DefenseParams, ""),
     "federated": (FederatedParams, "fl_"),
 }
@@ -29,13 +31,14 @@ PARAM_GROUPS = {
 
 @dataclass
 class ExperimentParams:
-    """Group run, model, data, training, attack, defense, and federated settings."""
+    """Group run, model, data, training, attack, backdoor, defense, and FL settings."""
 
     run: RunParams
     model: ModelParams
     data_loader: DataLoaderParams
     training: TrainingParams
     attack: AttackParams
+    backdoor: BackdoorParams
     defense: DefenseParams
     federated: FederatedParams
 

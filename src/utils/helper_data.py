@@ -4,6 +4,8 @@ import torch
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
 
+from src.backdoors import PoisonedDataset, build_backdoor
+
 
 def get_transforms():
     """Return a transform mapping images to [0, 1] tensors, unnormalized."""
@@ -14,7 +16,9 @@ def get_loaders(params):
     """Return disjoint train/validation loaders from the MNIST train split.
 
     Use params.run.seed for the split and shuffle only training batches.
-    Raise ValueError if validation_size leaves either subset empty.
+    With a backdoor selected, poison the training subset (never the
+    validation subset). Raise ValueError if validation_size leaves either
+    subset empty.
     """
     tf = get_transforms()
     dataset = datasets.MNIST(
@@ -28,6 +32,9 @@ def get_loaders(params):
         [len(dataset) - validation_size, validation_size],
         generator=torch.Generator().manual_seed(params.run.seed),
     )
+    trigger = build_backdoor(params.backdoor)
+    if trigger is not None:
+        train_ds = PoisonedDataset(train_ds, trigger, params.backdoor)
 
     train_loader = DataLoader(
         train_ds,

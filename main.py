@@ -42,19 +42,24 @@ RUNNERS = {
 def print_summary(rows, params):
     """Print and save a table of accuracies, one row per combination."""
     columns = list(dict.fromkeys(k for _, res in rows for k in res))
-    head = f"{'model':>12s} {'optimizer':>10s} {'train_attack':>13s}"
+    head = f"{'model':>12s} {'optimizer':>10s} {'train_attack':>13s} {'backdoor':>9s}"
     print("\n=== Summary: test accuracy ===")
-    print(head + "".join(f"{c:>10s}" for c in columns))
+    widths = [max(10, len(c) + 2) for c in columns]
+    print(head + "".join(f"{c:>{w}s}" for c, w in zip(columns, widths)))
     for run, res in rows:
-        line = f"{run['model']:>12s} {run['optimizer']:>10s} {run['train_attack']:>13s}"
-        print(line + "".join(f"{res.get(c, float('nan')):>10.4f}" for c in columns))
+        line = (
+            f"{run['model']:>12s} {run['optimizer']:>10s} "
+            f"{run['train_attack']:>13s} {run['backdoor']:>9s}"
+        )
+        cells = (res.get(c, float("nan")) for c in columns)
+        print(line + "".join(f"{v:>{w}.4f}" for v, w in zip(cells, widths)))
     save_json(
         [{**run, "accuracy": res} for run, res in rows], params, "experiment_summary"
     )
 
 
 def main():
-    """Run the selected mode for every model/optimizer/train_attack combination."""
+    """Run the selected mode for every central combination of settings."""
     params = get_params(args_parser())
     device = torch.device(params.run.device)
     runs = list(central_runs(params))
@@ -64,7 +69,7 @@ def main():
         print(
             f"\n##### [{i}/{len(runs)}] mode {run_params.run.mode} | "
             f"model {run['model']} | optimizer {run['optimizer']} | "
-            f"train attack {run['train_attack']} | "
+            f"train attack {run['train_attack']} | backdoor {run['backdoor']} | "
             f"checkpoint {run_params.model.weights} | device {device}"
         )
         model = build_model(run_params).to(device)

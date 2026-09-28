@@ -1,5 +1,7 @@
 """Run backdoor defenses, then optionally evaluate attacks on the defended model."""
 
+import dataclasses
+
 import matplotlib
 
 from src.defenses import DEFENSES
@@ -13,10 +15,11 @@ matplotlib.use("Agg")
 def run_defense(model, params, device):
     """Load the checkpoint, run the selected defenses, and save a JSON report.
 
-    Defenses that modify the model run after the analysis-only ones. When
-    --attack is given, the selected attacks are evaluated on the model the
-    defenses leave behind, so every backdoor defense can be combined with
-    every evasion attack.
+    Defenses that modify the model run after the analysis-only ones.
+    Afterwards the defended model is evaluated: clean accuracy and, for a
+    backdoored model, the trigger's attack success rate, plus every attack
+    given with --attack, so each defense combines with every backdoor and
+    evasion attack.
     """
     model = load_weights(model, params, device)
     names = sorted(
@@ -24,7 +27,10 @@ def run_defense(model, params, device):
         key=lambda n: DEFENSES.meta(n, "modifies_model", False),
     )
     report = {name: DEFENSES.get(name)(model, params, device) for name in names}
-    if params.attack.attack is not None:
-        report["attacks_after_defense"] = evaluate_attacks(model, params, device)
+    if params.attack.attack is None:
+        params = dataclasses.replace(
+            params, attack=dataclasses.replace(params.attack, attack=["none"])
+        )
+    report["after_defense"] = evaluate_attacks(model, params, device)
     save_json(report, params, f"defense_{params.model.tag}")
     return report
