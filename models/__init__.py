@@ -1,1 +1,1 @@
-"""MNIST classifier architecture used by the attack experiments."""
+"""MNIST classifier architectures: CNN, MLP, and Vision Transformer."""

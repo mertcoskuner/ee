@@ -7,6 +7,8 @@ import torch.nn.functional as F
 
 from src.attacks import pgd_linf
 from src.utils.helper_data import get_loaders
+from src.utils.helper_optim import build_optimizer
+from src.utils.helper_regularization import EarlyStopping, l1_penalty
 
 
 def adversarial_batch(model, imgs, labels, params):
@@ -33,7 +35,8 @@ def train_one_epoch(model, loader, optimizer, device, params):
     """Optimize one epoch and return sample-weighted loss and accuracy.
 
     Replace inputs with PGD examples when adversarial training is
-    enabled.
+    enabled and add the L1 weight penalty when its coefficient is set.
+    The reported loss is the cross-entropy without the penalty.
     """
     total_loss, correct, n = 0.0, 0, 0
     for batch_idx, (imgs, labels) in enumerate(loader):
@@ -45,7 +48,10 @@ def train_one_epoch(model, loader, optimizer, device, params):
         optimizer.zero_grad()
         out = model(imgs)
         loss = F.cross_entropy(out, labels)
-        loss.backward()
+        objective = loss
+        if params.training.l1 > 0:
+            objective = loss + params.training.l1 * l1_penalty(model)
+        objective.backward()
         optimizer.step()
 
         total_loss += loss.detach().item() * imgs.size(0)
@@ -86,15 +92,21 @@ def run_training(model, params, device):
 
     Select by adversarial validation accuracy for adversarial training
     and clean validation accuracy otherwise. Save every improved
-    checkpoint.
+    checkpoint and stop early after params.training.patience epochs
+    without improvement when patience is positive.
     """
     train_loader, val_loader = get_loaders(params)
-    optimizer = torch.optim.Adam(model.parameters(), lr=params.training.learning_rate)
+    optimizer = build_optimizer(model, params)
+    stopper = EarlyStopping(params.training.patience)
 
     best_acc = -1.0
     best_weights = None
 
     label = "PGD adversarial" if params.training.adv_train else "standard"
+    print(
+        f"Optimizer: {params.training.optimizer}  lr={params.training.learning_rate}"
+        f"  weight_decay={params.training.weight_decay}  l1={params.training.l1}"
+    )
     for epoch in range(1, params.training.epochs + 1):
         print(f"\nEpoch {epoch}/{params.training.epochs}  ({label} training)")
         tr_loss, tr_acc = train_one_epoch(
@@ -121,6 +133,9 @@ def run_training(model, params, device):
                 f"  Saved best model ({params.model.save_path}, "
                 f"score={best_acc:.4f})"
             )
+        if stopper.step(score):
+            print(f"  Early stopping: no improvement for {stopper.patience} epochs")
+            break
 
     model.load_state_dict(best_weights)
     print(f"\nTraining done. Best val score: {best_acc:.4f}")

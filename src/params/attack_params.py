@@ -2,21 +2,30 @@
 
 from dataclasses import dataclass
 
+ATTACKS = ["fgsm", "pgd_linf", "pgd_l2", "lbfgs", "cw"]
+
 
 @dataclass
 class AttackParams:
-    """Store the attack selection, norm budgets, and PGD step count."""
+    """Store the attack selection, budgets, and optimizer settings."""
 
     attack: str = "all"
     eps_linf: float = 0.3
     eps_l2: float = 2.0
     steps: int = 100
+    search_steps: int = 5
+    lbfgs_c: float = 1.0
+    lbfgs_iters: int = 20
+    cw_c: float = 1.0
+    cw_kappa: float = 0.0
+    cw_steps: int = 100
+    cw_lr: float = 0.01
 
     @property
     def attacks(self) -> list[str]:
-        """Expand the all selection into the three supported attack names."""
+        """Expand the all selection into every supported attack name."""
         if self.attack == "all":
-            return ["fgsm", "pgd_linf", "pgd_l2"]
+            return list(ATTACKS)
         return [self.attack]
 
     @property
@@ -37,4 +46,11 @@ def get_attack_params(args) -> AttackParams:
         eps_linf=args.eps_linf,
         eps_l2=args.eps_l2,
         steps=args.steps,
+        search_steps=args.search_steps,
+        lbfgs_c=args.lbfgs_c,
+        lbfgs_iters=args.lbfgs_iters,
+        cw_c=args.cw_c,
+        cw_kappa=args.cw_kappa,
+        cw_steps=args.cw_steps,
+        cw_lr=args.cw_lr,
     )

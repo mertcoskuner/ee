@@ -3,29 +3,48 @@
 import argparse
 import math
 
-from src.params.attack_params import AttackParams
+from src.params.attack_params import ATTACKS, AttackParams
 from src.params.data_loader_params import DataLoaderParams
+from src.params.defense_params import DEFENSES, DefenseParams
+from src.params.model_params import ModelParams
 from src.params.run_params import RunParams
 from src.params.training_params import TrainingParams
+
+MODES = ["train", "test", "both", "visualize", "tsne", "gradcam", "defense"]
 
 
 def args_parser(argv=None):
     """Parse optional CLI tokens and return a validated namespace.
 
     Use process arguments when argv is None. Invalid values or
-    out-of-range selections terminate through
-    argparse.error.
+    incompatible selections terminate through argparse.error.
     """
     parser = argparse.ArgumentParser(
-        description="Adversarial attacks (FGSM / PGD-linf / PGD-l2) on MNIST"
+        description="Adversarial attacks and backdoor defenses on MNIST"
     )
+    parser.add_argument("--mode", choices=MODES, default=RunParams.mode)
     parser.add_argument(
-        "--mode",
-        choices=["train", "test", "both", "visualize", "tsne", "gradcam"],
-        default=RunParams.mode,
+        "--model", choices=["cnn", "mlp", "transformer"], default=ModelParams.model
     )
+    parser.add_argument("--dropout", type=float, default=ModelParams.dropout)
     parser.add_argument("--epochs", type=int, default=TrainingParams.epochs)
+    parser.add_argument(
+        "--optimizer",
+        choices=["sgd", "momentum", "adam", "adamw"],
+        default=TrainingParams.optimizer,
+    )
     parser.add_argument("--lr", type=float, default=TrainingParams.learning_rate)
+    parser.add_argument("--momentum", type=float, default=TrainingParams.momentum)
+    parser.add_argument(
+        "--weight_decay", type=float, default=TrainingParams.weight_decay
+    )
+    parser.add_argument("--l1", type=float, default=TrainingParams.l1)
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=TrainingParams.patience,
+        help="early-stopping patience in epochs (0 disables it)",
+    )
     parser.add_argument("--device", default=RunParams.device)
     parser.add_argument("--seed", type=int, default=RunParams.seed)
     parser.add_argument("--data_dir", default=DataLoaderParams.data_dir)
@@ -45,13 +64,26 @@ def args_parser(argv=None):
     parser.add_argument("--train_alpha", type=float, default=TrainingParams.train_alpha)
     parser.add_argument("--log_interval", type=int, default=TrainingParams.log_interval)
     parser.add_argument(
-        "--attack",
-        choices=["fgsm", "pgd_linf", "pgd_l2", "all"],
-        default=AttackParams.attack,
+        "--attack", choices=ATTACKS + ["all"], default=AttackParams.attack
     )
     parser.add_argument("--eps_linf", type=float, default=AttackParams.eps_linf)
     parser.add_argument("--eps_l2", type=float, default=AttackParams.eps_l2)
     parser.add_argument("--steps", type=int, default=AttackParams.steps)
+    parser.add_argument("--search_steps", type=int, default=AttackParams.search_steps)
+    parser.add_argument("--lbfgs_c", type=float, default=AttackParams.lbfgs_c)
+    parser.add_argument("--lbfgs_iters", type=int, default=AttackParams.lbfgs_iters)
+    parser.add_argument("--cw_c", type=float, default=AttackParams.cw_c)
+    parser.add_argument("--cw_kappa", type=float, default=AttackParams.cw_kappa)
+    parser.add_argument("--cw_steps", type=int, default=AttackParams.cw_steps)
+    parser.add_argument("--cw_lr", type=float, default=AttackParams.cw_lr)
+    parser.add_argument(
+        "--defense", choices=DEFENSES + ["all"], default=DefenseParams.defense
+    )
+    parser.add_argument("--nc_steps", type=int, default=DefenseParams.nc_steps)
+    parser.add_argument("--nc_lambda", type=float, default=DefenseParams.nc_lambda)
+    parser.add_argument("--fp_max_drop", type=float, default=DefenseParams.fp_max_drop)
+    parser.add_argument("--fp_epochs", type=int, default=DefenseParams.fp_epochs)
+    parser.add_argument("--ls_samples", type=int, default=DefenseParams.ls_samples)
     args = parser.parse_args(argv)
     for name in (
         "epochs",
@@ -62,20 +94,45 @@ def args_parser(argv=None):
         "num_samples",
         "validation_size",
         "log_interval",
+        "search_steps",
+        "lbfgs_iters",
+        "cw_steps",
+        "nc_steps",
+        "ls_samples",
     ):
         value = getattr(args, name)
         if value is not None and value <= 0:
             parser.error(f"--{name} must be positive")
-    for name in ("lr", "train_alpha", "eps_linf", "eps_l2"):
+    for name in (
+        "lr",
+        "train_alpha",
+        "eps_linf",
+        "eps_l2",
+        "momentum",
+        "weight_decay",
+        "l1",
+        "lbfgs_c",
+        "cw_c",
+        "cw_kappa",
+        "cw_lr",
+        "nc_lambda",
+        "fp_max_drop",
+    ):
         value = getattr(args, name)
         if not math.isfinite(value) or value < 0:
             parser.error(f"--{name} must be finite and nonnegative")
-    if args.lr == 0:
-        parser.error("--lr must be positive")
-    if args.num_workers < 0:
-        parser.error("--num_workers must be nonnegative")
+    for name in ("lr", "lbfgs_c", "cw_c", "cw_lr"):
+        if getattr(args, name) == 0:
+            parser.error(f"--{name} must be positive")
+    if not 0 <= args.dropout < 1:
+        parser.error("--dropout must be in [0, 1)")
+    for name in ("num_workers", "patience", "fp_epochs"):
+        if getattr(args, name) < 0:
+            parser.error(f"--{name} must be nonnegative")
     if not 0 <= args.seed < 2**32:
         parser.error("--seed must be between 0 and 2**32 - 1")
     if args.validation_size >= 60000:
         parser.error("--validation_size must be smaller than 60000")
+    if args.mode == "gradcam" and args.model != "cnn":
+        parser.error("--mode gradcam requires the convolutional --model cnn")
     return args

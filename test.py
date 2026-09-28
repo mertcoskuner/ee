@@ -21,6 +21,10 @@ def run_test(model, params, device):
         f"{params.attack.steps} steps)",
         "pgd_l2": f"PGD-l2    (eps={params.attack.eps_l2}, "
         f"{params.attack.steps} steps)",
+        "lbfgs": f"L-BFGS    (c={params.attack.lbfgs_c}, "
+        f"{params.attack.search_steps} searches)",
+        "cw": f"CW-l2     (c={params.attack.cw_c}, kappa={params.attack.cw_kappa}, "
+        f"{params.attack.cw_steps} steps)",
     }
     results = {}
 

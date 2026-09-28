@@ -3,6 +3,7 @@
 import torch
 
 from config.args import args_parser
+from defense import run_defense
 from gradcam import run_gradcam
 from src.params import get_params
 from src.utils.helper_model import build_model
@@ -18,7 +19,10 @@ def main():
 
     set_seed(params.run.seed)
     print(f"Seed set to: {params.run.seed}")
-    print(f"Mode: {params.run.mode}  |  Weights: {params.model.weights}")
+    print(
+        f"Mode: {params.run.mode}  |  Model: {params.model.model}  |  "
+        f"Weights: {params.model.weights}"
+    )
 
     device = torch.device(params.run.device)
     print(f"Using device: {device}")
@@ -39,6 +43,9 @@ def main():
 
     if params.run.mode == "gradcam":
         run_gradcam(model, params, device)
+
+    if params.run.mode == "defense":
+        run_defense(model, params, device)
 
 
 if __name__ == "__main__":
