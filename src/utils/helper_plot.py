@@ -1,6 +1,7 @@
 """Save experiment figures, defense plots, and JSON reports."""
 
 import json
+import math
 import os
 
 import matplotlib.pyplot as plt
@@ -19,9 +20,13 @@ def save_fig(fig, params, name):
 
 
 def rounded(value, digits=4):
-    """Return value with every float, also inside lists and dicts, rounded."""
+    """Return value with every float, also inside lists and dicts, rounded.
+
+    NaN and infinite values (for example the accuracy of a class absent
+    from a small test subset) become None, so the JSON stays valid.
+    """
     if isinstance(value, float):
-        return round(value, digits)
+        return round(value, digits) if math.isfinite(value) else None
     if isinstance(value, dict):
         return {k: rounded(v, digits) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
@@ -34,7 +39,7 @@ def save_json(report, params, name):
     os.makedirs(params.run.results_dir, exist_ok=True)
     path = os.path.join(params.run.results_dir, f"{name}.json")
     with open(path, "w") as f:
-        json.dump(rounded(report), f, indent=2)
+        json.dump(rounded(report), f, indent=2, allow_nan=False)
     print(f"  saved {path}")
 
 

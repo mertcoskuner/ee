@@ -302,6 +302,7 @@ test metrics per checkpoint, or the final accuracy per federated combination.
 - **Federated DP.**
   - Central DP (DP-FedAvg): the server clips each update to `--fl_dp_clip`, averages the clients with equal weights,
     and adds N(0, (σ·S/m)²) noise. ε counts client-level privacy with client sampling rate `--fl_participation`.
+    The noise is calibrated to the mean, so with a robust `--fl_aggregator` the reported ε is only indicative.
   - Local DP: every honest client clips and noises its own update before sending it. Its ε uses sensitivity 2S over
     the rounds the client joins.
   - With a few dozen clients, meaningful ε costs most of the accuracy. Differentially private FL needs many clients.
