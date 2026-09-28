@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass, field
 
+DP_EPSILONS = [0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
+
 
 @dataclass
 class PrivacyParams:
@@ -18,9 +20,7 @@ class PrivacyParams:
     dp_delta: float = 1e-5
     mia: bool = False
     mia_samples: int = 1000
-    dp_epsilons: list[float] = field(
-        default_factory=lambda: [0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0]
-    )
+    dp_epsilons: list[float] = field(default_factory=lambda: list(DP_EPSILONS))
     dp_trials: int = 200
 
 

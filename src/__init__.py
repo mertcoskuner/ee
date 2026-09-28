@@ -1,1 +1,1 @@
-"""Attack implementations, typed parameters, and shared utilities."""
+"""Attacks, backdoors, defenses, federated learning, privacy, parameters, and utilities."""

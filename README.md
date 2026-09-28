@@ -35,15 +35,15 @@ python main.py --mode federated --fl_attack none alie ipm --fl_byzantine_ratio 0
 ```
 main.py                     entry point: expands combinations and dispatches to a mode runner
 ├── config/args.py          args_parser(): every CLI option and its validation
-├── train.py                clean or adversarial training            (--mode train / both)
+├── train.py                clean, adversarial or DP-SGD training     (--mode train / both)
 ├── test.py                 clean and attacked accuracy, per class   (--mode test / both)
 ├── visualize.py            adversarial examples, t-SNE               (--mode visualize / tsne)
 ├── gradcam.py              Grad-CAM on clean vs. adversarial digits  (--mode gradcam)
 ├── geometry.py             geometry of adversarial perturbations     (--mode geometry)
 ├── defense.py              backdoor defenses (+ attacks afterwards)  (--mode defense)
 ├── federated.py            federated sweeps                          (--mode federated)
-├── privacy.py              DP mechanisms and accounting demos       (--mode dp_mechanisms / dp_accounting)
-├── scripts/                common.sh + week01 … week10 scripts, run_all.sh
+├── privacy.py              DP mechanisms and accounting demos        (--mode dp_mechanisms / dp_accounting)
+├── scripts/                common.sh + week01 … week13 scripts, run_all.sh
 ├── models/                 CNN.py, MLP.py, Transformer.py      → registry MODELS
 └── src/
     ├── params/             *_params.py: one dataclass and one get_*_params(args) per group
@@ -60,8 +60,9 @@ main.py                     entry point: expands combinations and dispatches to 
     │   └── attacks/        none, label_flip, alie, ipm, sign_flip, gaussian → registry FL_ATTACKS
     └── utils/              helper_*.py: registry, experiment expansion (central and federated), data,
                             model (build, checkpoints, surrogate, reference), optimizer, regularization,
-                            evaluation (accuracy, attack success rate), attack gradients, Grad-CAM,
-                            perturbation geometry, federated clients, statistics, plots and reports,
+                            adversarial training batches, evaluation (accuracy, attack success rate),
+                            attack gradients, Grad-CAM, perturbation geometry, federated clients,
+                            privacy (DP-SGD sampling, spent ε), statistics, plots and reports,
                             seeding and device selection
 ```
 
@@ -73,13 +74,14 @@ main.py                     entry point: expands combinations and dispatches to 
    - Invalid values and incompatible selections are rejected before anything runs. For example, Grad-CAM needs a
      convolutional model, and an FL attack needs at least one Byzantine client.
 2. **Parameters.** Each file in `src/params/` holds one dataclass and its `get_*_params(args)` builder: run, model,
-   data loader, training, attack, backdoor, defense, federated. `get_params(args)` groups them into
+   data loader, training, attack, backdoor, defense, federated, privacy. `get_params(args)` groups them into
    `ExperimentParams`.
 3. **Combinations.** `get_params` builds the typed parameters, and `central_runs`
    (`src/utils/helper_experiments.py`) expands the list-valued central options `--model × --optimizer ×
    --train_attack × --backdoor` into one run each. Each run gets its own checkpoint name.
 4. **Dispatch.** `main.py` builds a fresh, seeded model per run and calls the runner of `--mode`. `test` and `both`
-   runs with more than one combination end with a summary table.
+   runs with more than one combination end with a summary table. `dp_mechanisms` and `dp_accounting` use no model
+   and run once.
 5. **Components.** Runners never branch on names. They look components up in a registry:
    - `run_attack` → `ATTACKS`
    - `run_defense` → `DEFENSES`
@@ -136,7 +138,7 @@ A new hyperparameter takes three steps:
 | Mode | Runner | What combines |
 |------|--------|---------------|
 | `train` | `train.run_training` | `--model × --optimizer × --train_attack × --backdoor` (`none` = clean) |
-| `test` | `test.run_test` | the same checkpoints × `--attack` (`none` = clean only; default: every attack) |
+| `test` | `test.run_test` | the same checkpoints × `--attack` (default: fgsm, pgd_linf, pgd_l2; `all` adds the slow ones; `none` = clean only) |
 | `both` | train, then test | all of the above, with a summary table |
 | `visualize`, `tsne` | `visualize.py` | adversarial examples and t-SNE for each checkpoint |
 | `gradcam` | `gradcam.py` | Grad-CAM for each convolutional checkpoint |
@@ -146,7 +148,8 @@ A new hyperparameter takes three steps:
 | `dp_mechanisms` | `privacy.run_dp_mechanisms` | Laplace / Gaussian / randomized response and DP properties for `--dp_epsilons` |
 | `dp_accounting` | `privacy.run_dp_accounting` | ε of DP-SGD under basic, advanced and RDP accounting, with and without subsampling |
 
-- **`all`:** `--attack`, `--defense`, `--model`, `--optimizer`, `--fl_aggregator` and `--fl_attack` accept `all`.
+- **`all`:** `--attack`, `--train_attack`, `--backdoor`, `--defense`, `--model`, `--optimizer`, `--fl_aggregator` and
+  `--fl_attack` accept `all`.
 - **Threat models:** attacks are white-box by default. `--surrogate_model` (with `--surrogate_optimizer` and
   `--surrogate_train_attack`) crafts them on another checkpoint and transfers them: grey-box for the same
   architecture, black-box for a different one. `square` is a query-only black-box attack.
@@ -155,13 +158,14 @@ A new hyperparameter takes three steps:
 - **Training curves:** `--track_test` records clean and robust test accuracy after every epoch and plots them next to
   the training and validation accuracy (`training_curve_<tag>.png`), which also exposes adversarial overfitting.
 - **Differential privacy:** `--dp` trains with DP-SGD (`--dp_noise`, `--dp_clip`, `--dp_delta`) and reports the
-  privacy budget ε after every epoch and in the test report. `--mia` adds a membership inference attack to test mode.
+  privacy budget ε after every epoch and in the test report; the clean accuracy drop is measured against the non-DP
+  checkpoint when it exists. `--mia` adds a membership inference attack to test mode.
   `--fl_dp central local` adds DP-FedAvg or local DP to federated runs (`--fl_dp_noise`, `--fl_dp_clip`).
 - **Adversarial training:** it uses the chosen attack with `--train_steps` iterations, and PGD-ℓ∞ steps by
   `--train_alpha`. With the defaults this is Madry et al.'s 40 steps of 0.01 at ε = 0.3.
 - **Checkpoint names:** `checkpoints/best_<model>_<optimizer>.pth` (`--checkpoint_dir`), with `_adv-<attack>` for
-  adversarial training and `_bd-<trigger>` for backdoored training. Evaluation modes load the checkpoint matching the
-  same options, and `_dp<noise>` marks DP-SGD models. Fine-pruning adds `_fine_pruned`, and federated runs save
+  adversarial training, `_bd-<trigger>` for backdoored training and `_dp<noise>` for DP-SGD. Evaluation modes load the
+  checkpoint matching the same options. Fine-pruning adds `_fine_pruned`, and federated runs save
   `fl_<model>_<combination>.pth`.
 - **Infeasible federated combinations** are skipped with the reason and listed in the summary. Krum needs n ≥ 2f + 2
   and Bulyan needs n ≥ 4f + 3.
@@ -206,7 +210,7 @@ test metrics per checkpoint, or the final accuracy per federated combination.
 | Geometry of adversarial perturbations | `geometry.py` (`--mode geometry`), `visualize.py` |
 | Transferability | `--surrogate_model` / `--surrogate_optimizer` in test mode |
 | Black-box attacks | `src/attacks/square.py` (`--square_queries`) and transfer attacks |
-| Adversarial training | `--train_attack <attack>` (`train.py`) |
+| Adversarial training | `--train_attack <attack>` (`train.py`, `src/utils/helper_training.py`) |
 | AutoAttack | `src/attacks/autoattack.py` (`--autoattack_version`) |
 | Adversarial overfitting | `--track_test` (per-epoch clean and robust test accuracy) |
 | Backdoor attacks on vision tasks | `src/backdoors/badnets.py`, `blend.py` (`--backdoor`, `--target_class`) |
@@ -312,8 +316,10 @@ then Apple MPS, then the CPU; `--device cpu` or `--device cuda:1` picks one expl
 
 Every script in `scripts/` runs from any directory and writes to `results/weekNN_*/`:
 
-- **Reusing models:** checkpoints are reused when they already exist.
-- **Settings:** `QUICK=1` shrinks epochs, samples, attack iterations and rounds for a fast pass. `PYTHON`, `DEVICE`
+- **Reusing models:** checkpoints are reused when they already exist. Experiments with non-default
+  hyperparameters keep their checkpoints in their own subdirectory, so they never replace a shared model.
+- **Settings:** `QUICK=1` shrinks epochs, samples, attack iterations and rounds for a fast pass and keeps its
+  checkpoints apart in `checkpoints_quick/`. `PYTHON`, `DEVICE`
   (default `auto`: GPU when available) and `RESULTS` override the interpreter, the device and the output root.
 
 ```bash

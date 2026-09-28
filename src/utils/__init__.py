@@ -1,1 +1,1 @@
-"""Shared helpers: data, models, optimizers, registries, parameters, and plots."""
+"""Shared helpers: data, models, training, evaluation, FL, privacy, and plots."""

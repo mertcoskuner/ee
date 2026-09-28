@@ -26,7 +26,7 @@ def load_weights(model, params, device):
         raise SystemExit(
             f"error: checkpoint {params.model.weights} not found. Train it first "
             "with --mode train (or --mode both) and the same --model, --optimizer, "
-            "--train_attack, --backdoor and --checkpoint_dir options."
+            "--train_attack, --backdoor, --dp and --checkpoint_dir options."
         )
     model.load_state_dict(torch.load(params.model.weights, map_location=device))
     model.requires_grad_(False)
@@ -58,12 +58,13 @@ def load_reference(params, device):
     """Return (model, path) of the clean reference checkpoint, or (None, None).
 
     The reference is the same architecture and optimizer trained on clean
-    data without a backdoor. It is only loaded for adversarially trained
-    or backdoored runs whose reference checkpoint exists, so their clean
-    accuracy drop can be reported.
+    data without a backdoor or DP-SGD. It is only loaded for adversarially
+    trained, backdoored, or DP-SGD runs whose reference checkpoint exists,
+    so their clean accuracy drop can be reported.
     """
     t = params.training
-    if t.train_attack == "none" and params.backdoor.backdoor == "none":
+    plain = t.train_attack == "none" and params.backdoor.backdoor == "none"
+    if plain and not params.privacy.dp:
         return None, None
     path = checkpoint_path(params, checkpoint_tag(params.model.model, t.optimizer))
     if not os.path.exists(path):

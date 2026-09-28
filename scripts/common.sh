@@ -19,7 +19,8 @@ else
 fi
 
 COMMON=(--device "$DEVICE" --num_workers 0 --checkpoint_dir "$CKPT")
-TRAIN=(--epochs "$EPOCHS" --lr 1e-3 --log_interval 1000)
+SCHEDULE=(--epochs "$EPOCHS" --log_interval 1000)
+TRAIN=("${SCHEDULE[@]}" --lr 1e-3)
 
 section() {
     printf '\n\033[1m=== %s ===\033[0m\n' "$*"
@@ -36,6 +37,10 @@ ensure() {
     if [ -f "$checkpoint" ]; then
         echo "reusing $checkpoint"
     else
-        run --mode train "${TRAIN[@]}" "$@"
+        if [[ " $* " == *" --lr "* ]]; then
+            run --mode train "${SCHEDULE[@]}" "$@"
+        else
+            run --mode train "${TRAIN[@]}" "$@"
+        fi
     fi
 }

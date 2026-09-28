@@ -18,16 +18,12 @@ from src.privacy import (
 from src.utils.helper_data import load_mnist_tensors
 from src.utils.helper_plot import plot_dp_accounting, plot_dp_mechanisms, save_json
 from src.utils.helper_privacy import dp_sgd_rate, training_size
+from src.utils.helper_stats import mean_abs_error
 
 matplotlib.use("Agg")
 
 GROUP = 4
 COUNT_IMAGES = 100
-
-
-def mean_abs_error(release, truth, trials):
-    """Return the mean absolute error of `trials` calls of release()."""
-    return float(np.mean([abs(release() - truth) for _ in range(trials)]))
 
 
 def run_dp_mechanisms(model, params, device):
@@ -69,7 +65,9 @@ def run_dp_mechanisms(model, params, device):
         report["laplace_clamped_error"].append(float((clamped - count).abs().mean()))
         report["gaussian_error"].append(
             mean_abs_error(
-                lambda: gaussian_mechanism(count, 1.0, eps, 1e-5, generator).item(),
+                lambda: gaussian_mechanism(
+                    count, 1.0, eps, p.dp_delta, generator
+                ).item(),
                 count,
                 trials,
             )

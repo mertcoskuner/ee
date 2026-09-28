@@ -1,10 +1,11 @@
 """Expand list-valued settings into one experiment per combination.
 
 Central runs: the model, optimizer, training-attack, and backdoor options
-accept several values;
-every combination becomes its own run with its own checkpoint name, so one
-command can train and evaluate clean and adversarially trained models with
-several optimizers and architectures.
+accept several values, and every combination becomes its own run with its
+own checkpoint name, so one command can train and evaluate clean,
+adversarially trained, and backdoored models with several optimizers and
+architectures. Federated runs: every combination of the SWEEP_FIELDS
+values becomes its own federated experiment.
 """
 
 import dataclasses
@@ -90,8 +91,8 @@ def central_runs(params):
 def fl_combinations(fl):
     """Yield one FederatedParams per combination of the federated sweep fields.
 
-    List-valued fields (partition, local, server_opt, aggregator, attack)
-    are expanded, with "all" standing for every registered value.
+    The list-valued SWEEP_FIELDS (partition, local, server_opt, aggregator,
+    attack, dp) are expanded, with "all" standing for every registered value.
     """
     axes = []
     for name in SWEEP_FIELDS:

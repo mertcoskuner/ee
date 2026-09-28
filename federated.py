@@ -11,7 +11,7 @@ from src.params.federated_params import SWEEP_FIELDS
 from src.utils.helper_data import load_mnist_tensors
 from src.utils.helper_eval import accuracy, predict
 from src.utils.helper_experiments import fl_combinations, fl_run_tag
-from src.utils.helper_federated import build_clients, label_histogram
+from src.utils.helper_federated import build_clients, describe, label_histogram
 from src.utils.helper_model import build_model
 from src.utils.helper_plot import (
     plot_federated_curves,
@@ -50,21 +50,6 @@ def train_federated(params, device):
     stem = f"fl_{params.model.model}_{fl_run_tag(fl)}"
     torch.save(model.state_dict(), checkpoint_path(params, stem))
     return history, label_histogram(clients, params.model.num_classes)
-
-
-def describe(fl):
-    """Return a one-line description of a combination's setup."""
-    group = (
-        f" in groups of {fl.group_size} ({fl.inner_aggregator} inside)"
-        if fl.group_size > 1
-        else ""
-    )
-    return (
-        f"partition {fl.partition} | local {fl.local} | server {fl.server_opt} | "
-        f"aggregator {fl.aggregator}{group} | attack {fl.attack} "
-        f"({num_byzantine(fl)}/{fl.clients} Byzantine, f={assumed_attackers(fl)}) | "
-        f"dp {fl.dp}"
-    )
 
 
 def run_federated(model, params, device):

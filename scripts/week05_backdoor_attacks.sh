@@ -17,6 +17,6 @@ ensure "$CKPT"/best_cnn_adam_bd-badnets.pth --model cnn --backdoor badnets
 
 section "Dynamic trigger training: random pattern and location in every epoch"
 run --mode both "${TRAIN[@]}" --model cnn --backdoor dynamic --trigger_size 5 --attack none \
-    --num_samples "$NUM" --results_dir "$OUT/dynamic"
+    --num_samples "$NUM" --checkpoint_dir "$CKPT/week05_dynamic_size_5" --results_dir "$OUT/dynamic"
 
 echo "Week 5 results: $OUT"

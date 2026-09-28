@@ -22,7 +22,7 @@ def evaluate_attacks(model, params, device, reference_clean=None, save=True):
     - "clean": clean test accuracy;
     - "clean_drop": reference clean accuracy minus clean accuracy, when a
       reference exists (reference_clean, or the clean checkpoint of the same
-      architecture and optimizer for adversarially trained or backdoored
+      architecture and optimizer for adversarially trained, backdoored, or DP
       models);
     - "<attack>": robust accuracy under each selected attack;
     - "<attack>_asr": attack success rate, the share of correctly classified

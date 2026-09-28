@@ -21,7 +21,7 @@ from src.params.federated_params import (
     FederatedParams,
 )
 from src.params.model_params import ModelParams
-from src.params.privacy_params import PrivacyParams
+from src.params.privacy_params import DP_EPSILONS, PrivacyParams
 from src.params.run_params import MODES, RunParams
 from src.params.training_params import OPTIMIZERS, TrainingParams
 
@@ -252,6 +252,7 @@ def args_parser(argv=None):
         "--fl_assumed_byzantine", type=int, default=FederatedParams.assumed_byzantine
     )
     parser.add_argument("--fl_alie_z", type=float, default=FederatedParams.alie_z)
+    parser.add_argument("--fl_clip_norm", type=float, default=FederatedParams.clip_norm)
     parser.add_argument(
         "--fl_dp",
         nargs="+",
@@ -276,11 +277,10 @@ def args_parser(argv=None):
         "--dp_epsilons",
         type=float,
         nargs="+",
-        default=[0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0],
+        default=list(DP_EPSILONS),
         help="privacy budgets compared in --mode dp_mechanisms",
     )
     parser.add_argument("--dp_trials", type=int, default=PrivacyParams.dp_trials)
-    parser.add_argument("--fl_clip_norm", type=float, default=FederatedParams.clip_norm)
 
     args = parser.parse_args(argv)
     for name in (
@@ -377,7 +377,9 @@ def args_parser(argv=None):
         "fl_kd_temperature",
         "fl_cc_tau",
         "fl_dp_clip",
+        "fl_dp_noise",
         "dp_clip",
+        "dp_noise",
     ):
         if getattr(args, name) == 0:
             parser.error(f"--{name} must be positive")

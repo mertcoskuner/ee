@@ -1,6 +1,9 @@
-"""Privacy budgets spent by DP-SGD training and DP federated learning."""
+"""DP-SGD batch sampling and the privacy budgets of DP training and DP FL."""
 
-from src.privacy import dp_sgd_epsilon
+import torch
+from torch.utils.data import DataLoader
+
+from src.privacy import PoissonBatchSampler, dp_sgd_epsilon
 
 
 def training_size(params):
@@ -32,9 +35,21 @@ def federated_epsilon(fl):
     2 dp_clip, and noise dp_noise * dp_clip gives multiplier dp_noise / 2,
     composed over the rounds the client is expected to join.
     """
-    if fl.dp == "none" or fl.dp_noise == 0:
-        return None if fl.dp == "none" else float("inf")
+    if fl.dp == "none":
+        return None
     if fl.dp == "central":
         return dp_sgd_epsilon(fl.participation, fl.dp_noise, fl.rounds, fl.dp_delta)
     rounds = max(1, round(fl.rounds * fl.participation))
     return dp_sgd_epsilon(1.0, fl.dp_noise / 2, rounds, fl.dp_delta)
+
+
+def dp_loader(train_loader, params):
+    """Return a DataLoader drawing Poisson-sampled batches for DP-SGD."""
+    dataset = train_loader.dataset
+    generator = torch.Generator().manual_seed(params.run.seed)
+    sampler = PoissonBatchSampler(len(dataset), dp_sgd_rate(params), generator)
+    return DataLoader(
+        dataset,
+        batch_sampler=sampler,
+        num_workers=params.data_loader.num_workers,
+    )

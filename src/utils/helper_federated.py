@@ -1,9 +1,9 @@
-"""Create federated clients from partitioned MNIST data."""
+"""Create federated clients from partitioned MNIST data and describe runs."""
 
 import numpy as np
 import torch
 
-from src.federated import Client, num_byzantine, partition
+from src.federated import Client, assumed_attackers, num_byzantine, partition
 from src.federated.attacks import client_class
 from src.utils.helper_data import load_mnist_tensors
 
@@ -37,3 +37,18 @@ def build_clients(params, device):
 def label_histogram(clients, num_classes):
     """Return a clients x classes matrix of local label counts."""
     return np.stack([np.bincount(c.y.numpy(), minlength=num_classes) for c in clients])
+
+
+def describe(fl):
+    """Return a one-line description of a combination's setup."""
+    group = (
+        f" in groups of {fl.group_size} ({fl.inner_aggregator} inside)"
+        if fl.group_size > 1
+        else ""
+    )
+    return (
+        f"partition {fl.partition} | local {fl.local} | server {fl.server_opt} | "
+        f"aggregator {fl.aggregator}{group} | attack {fl.attack} "
+        f"({num_byzantine(fl)}/{fl.clients} Byzantine, f={assumed_attackers(fl)}) | "
+        f"dp {fl.dp}"
+    )

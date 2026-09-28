@@ -1,59 +1,18 @@
 """Train an MNIST classifier: clean, adversarially with any attack, or with DP-SGD."""
 
 import copy
-import dataclasses
 
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
 
-from src.attacks import run_attack
-from src.privacy import PoissonBatchSampler, dp_sgd_step
+from src.privacy import dp_sgd_step
 from src.utils.helper_data import get_loaders, load_mnist_tensors
 from src.utils.helper_eval import clean_and_robust_accuracy
 from src.utils.helper_optim import build_optimizer
 from src.utils.helper_plot import plot_training_curve, save_json
-from src.utils.helper_privacy import dp_sgd_rate, training_epsilon
+from src.utils.helper_privacy import dp_loader, training_epsilon
 from src.utils.helper_regularization import EarlyStopping, l1_penalty
-
-
-def training_attack_params(params):
-    """Return params whose attack settings use the training budgets.
-
-    Iterative attacks run train_steps iterations and PGD-linf steps by
-    train_alpha (Madry et al.: 40 steps of 0.01); budgets such as eps_linf
-    and eps_l2 are shared with evaluation.
-    """
-    attack = dataclasses.replace(
-        params.attack,
-        steps=params.training.train_steps,
-        step_linf=params.training.train_alpha,
-    )
-    return dataclasses.replace(params, attack=attack)
-
-
-def adversarial_batch(model, imgs, labels, params):
-    """Return adversarial examples of params.training.train_attack.
-
-    Switch to evaluation mode and disable parameter gradients during the
-    attack, then re-enable them. The caller restores training mode.
-    """
-    model.eval()
-    model.requires_grad_(False)
-    adv = run_attack(
-        model,
-        imgs,
-        labels,
-        params.training.train_attack,
-        training_attack_params(params),
-    )
-    model.requires_grad_(True)
-    return adv
-
-
-def adversarial(params):
-    """Return whether training uses adversarial examples."""
-    return params.training.train_attack != "none"
+from src.utils.helper_training import adversarial, adversarial_batch
 
 
 def train_one_epoch(model, loader, optimizer, device, params):
@@ -90,18 +49,6 @@ def train_one_epoch(model, loader, optimizer, device, params):
             )
 
     return total_loss / n, correct / n
-
-
-def dp_loader(train_loader, params):
-    """Return a DataLoader drawing Poisson-sampled batches for DP-SGD."""
-    dataset = train_loader.dataset
-    generator = torch.Generator().manual_seed(params.run.seed)
-    sampler = PoissonBatchSampler(len(dataset), dp_sgd_rate(params), generator)
-    return DataLoader(
-        dataset,
-        batch_sampler=sampler,
-        num_workers=params.data_loader.num_workers,
-    )
 
 
 def dp_train_one_epoch(model, loader, optimizer, device, params, generator):
