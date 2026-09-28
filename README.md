@@ -202,7 +202,7 @@ test metrics per checkpoint, or the final accuracy per federated combination.
 | Transformer architecture | `models/Transformer.py` (`--model transformer`, `--patch_size --dim --depth --heads --mlp_dim`) |
 | Stochastic gradient descent | `--optimizer sgd` (`src/utils/helper_optim.py`) |
 | Momentum, Adam, AdamW | `--optimizer momentum / adam / adamw` (`--momentum`) |
-| Regularization | `--weight_decay` (L2; decoupled for AdamW), `--l1`, `--dropout`, `--patience` (early stopping) |
+| Regularization | `--weight_decay` (L2; decoupled for AdamW), `--l1`, `--dropout` (MLP and Transformer), `--patience` (early stopping) |
 | FGSM, PGD, L-BFGS | `src/attacks/fgsm.py`, `pgd_linf.py`, `pgd_l2.py`, `lbfgs.py` |
 | Carlini–Wagner attacks | `src/attacks/cw.py` (`--cw_c --cw_kappa --cw_steps --cw_lr`) |
 | Threat models: white-box / grey-box / black-box | default white-box; `--surrogate_model` transfer; `--attack square` |

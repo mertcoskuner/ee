@@ -4,6 +4,7 @@ import copy
 
 import torch
 import torch.nn.functional as F
+from torch import nn
 
 from src.privacy import dp_sgd_step
 from src.utils.helper_data import get_loaders, load_mnist_tensors
@@ -132,9 +133,13 @@ def run_training(model, params, device):
         label += (
             f", DP-SGD noise {params.privacy.dp_noise} clip {params.privacy.dp_clip}"
         )
+    t = params.training
+    dropout = any(isinstance(m, nn.Dropout) for m in model.modules())
     print(
-        f"Optimizer: {params.training.optimizer}  lr={params.training.learning_rate}"
-        f"  weight_decay={params.training.weight_decay}  l1={params.training.l1}"
+        f"Optimizer: {t.optimizer}  lr={t.learning_rate}  "
+        f"weight_decay={t.weight_decay}  l1={t.l1}"
+        + (f"  dropout={params.model.dropout}" if dropout else "")
+        + f"  patience={t.patience or 'off'}"
     )
     for epoch in range(1, params.training.epochs + 1):
         print(f"\nEpoch {epoch}/{params.training.epochs}  ({label} training)")

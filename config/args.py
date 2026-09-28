@@ -51,7 +51,12 @@ def args_parser(argv=None):
     parser.add_argument(
         "--model", nargs="+", choices=MODELS.names() + ["all"], default=["cnn"]
     )
-    parser.add_argument("--dropout", type=float, default=ModelParams.dropout)
+    parser.add_argument(
+        "--dropout",
+        type=float,
+        default=ModelParams.dropout,
+        help="dropout rate of the MLP and Transformer (the CNN has no dropout)",
+    )
     parser.add_argument(
         "--hidden_sizes",
         type=int,
