@@ -52,6 +52,7 @@ def cw_l2(model, x, y, c=1.0, kappa=0.0, steps=100, lr=0.01, search_steps=5):
 @ATTACKS.register(
     "cw",
     rank=5,
+    slow=True,
     label=lambda a: f"CW-l2 (c={a.cw_c}, kappa={a.cw_kappa}, {a.cw_steps} steps)",
 )
 def run_cw(model, x, y, a):

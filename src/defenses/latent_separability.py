@@ -12,7 +12,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
 
-from src.utils.helper_data import load_mnist_tensors
+from src.utils.helper_data import training_tensors
 from src.utils.helper_eval import features
 from src.utils.helper_plot import plot_latent_separability
 from src.utils.helper_stats import anomaly_indices
@@ -66,10 +66,14 @@ def latent_separability(
 
 @DEFENSES.register("latent_separability", rank=2)
 def run_latent_separability(model, params, device):
-    """Cluster each class's training-set features in latent space and report."""
+    """Cluster each class's training-set features in latent space and report.
+
+    The features come from the images the model was trained on, poisoned
+    ones included, since poisoned samples form the separable cluster.
+    """
     d = params.defense
-    x, y = load_mnist_tensors(params, train=True)
-    x, y = x[: d.ls_samples], y[: d.ls_samples].numpy()
+    x, y = training_tensors(params, d.ls_samples)
+    y = y.numpy()
     res = latent_separability(
         features(model, x, device),
         y,

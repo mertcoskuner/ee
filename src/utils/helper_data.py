@@ -82,3 +82,32 @@ def loader_tensors(loader, limit):
         if n >= limit:
             break
     return torch.cat(xs)[:limit], torch.cat(ys)[:limit]
+
+
+def defender_data(params, samples):
+    """Return (clean loader, clean images, clean labels) for a defender.
+
+    The data come from the validation split, which is never poisoned, so
+    they model the small clean set a defender holds. The loader shuffles
+    all of it for fine-tuning; the tensors are its first samples images.
+    """
+    _, val_loader = get_loaders(params)
+    loader = DataLoader(
+        val_loader.dataset,
+        batch_size=params.data_loader.batch_size,
+        shuffle=True,
+        num_workers=params.data_loader.num_workers,
+    )
+    x, y = loader_tensors(val_loader, samples)
+    return loader, x, y
+
+
+def training_tensors(params, limit):
+    """Return the first limit training images and labels the model saw.
+
+    With a backdoor selected these include the poisoned images and their
+    target labels, exactly as in training.
+    """
+    train_loader, _ = get_loaders(params)
+    ordered = DataLoader(train_loader.dataset, batch_size=1000, shuffle=False)
+    return loader_tensors(ordered, limit)

@@ -8,6 +8,7 @@ from .registry import ATTACKS
 @ATTACKS.register(
     "autoattack",
     rank=7,
+    slow=True,
     label=lambda a: f"AutoAttack-{a.autoattack_version} (eps={a.eps_linf})",
 )
 def run_autoattack(model, x, y, a):

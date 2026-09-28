@@ -74,6 +74,7 @@ def lbfgs(model, x, y, c=1.0, search_steps=5, max_iter=20, target=None):
 @ATTACKS.register(
     "lbfgs",
     rank=4,
+    slow=True,
     label=lambda a: f"L-BFGS (c={a.lbfgs_c}, {a.search_steps} searches)",
 )
 def run_lbfgs(model, x, y, a):

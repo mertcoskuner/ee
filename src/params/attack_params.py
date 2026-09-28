@@ -9,8 +9,9 @@ from src.attacks import ATTACKS
 class AttackParams:
     """Store the attack selection, budgets, optimizer settings, and surrogate.
 
-    attack None selects every attack (test mode) or none (after defenses);
-    ["none"] selects no attack, so only clean accuracy is measured. A
+    attack None selects the fast attacks (test mode) or none (after
+    defenses); ["all"] selects every attack, including the slow L-BFGS,
+    CW, Square and AutoAttack; ["none"] measures clean accuracy only. A
     surrogate_model crafts attacks on another checkpoint for transfer.
     """
 
@@ -36,10 +37,13 @@ class AttackParams:
     def attacks(self) -> list[str]:
         """Return the selected attack names.
 
-        None or "all" selects every registered attack; "none" selects no
-        attack, so only clean accuracy is measured.
+        None selects every attack not registered as slow, "all" every
+        registered attack, and "none" no attack, so only clean accuracy is
+        measured.
         """
-        if self.attack is not None and "none" in self.attack:
+        if self.attack is None:
+            return [a for a in ATTACKS.names() if not ATTACKS.meta(a, "slow", False)]
+        if "none" in self.attack:
             return []
         return ATTACKS.expand(self.attack)
 

@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from src.utils.helper_data import get_loaders, loader_tensors
+from src.utils.helper_data import defender_data
 from src.utils.helper_eval import accuracy, predict
 from src.utils.helper_run import checkpoint_path
 
@@ -84,13 +84,13 @@ def bake_mask(layer, kind, mask):
             layer.weight[:, mask == 0] = 0
 
 
-def fine_pruning(model, x_val, y_val, train_loader, max_drop, epochs, lr, device):
+def fine_pruning(model, x_val, y_val, clean_loader, max_drop, epochs, lr, device):
     """Prune dormant units, then fine-tune on clean data.
 
     Prune units in increasing order of mean clean activation while the
     validation accuracy stays within max_drop of the original, fine-tune
-    for epochs with Adam at lr keeping pruned units at zero, and bake the
-    pruning into the weights. Return a dict with accuracies and the
+    for epochs with Adam at lr on the defender's clean_loader keeping pruned
+    units at zero, and bake the pruning into the weights. Return a dict with accuracies and the
     pruned unit indices; the model is modified in place.
     """
 
@@ -121,7 +121,7 @@ def fine_pruning(model, x_val, y_val, train_loader, max_drop, epochs, lr, device
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
         for _ in range(epochs):
             model.train()
-            for imgs, labels in train_loader:
+            for imgs, labels in clean_loader:
                 imgs, labels = imgs.to(device), labels.to(device)
                 optimizer.zero_grad()
                 F.cross_entropy(model(imgs), labels).backward()
@@ -143,15 +143,17 @@ def fine_pruning(model, x_val, y_val, train_loader, max_drop, epochs, lr, device
 
 @DEFENSES.register("fine_pruning", rank=3, modifies_model=True)
 def run_fine_pruning(model, params, device):
-    """Prune dormant units, fine-tune, save the pruned checkpoint, and report."""
+    """Prune dormant units, fine-tune on clean data, save, and report.
+
+    The defender's clean data is the never-poisoned validation split.
+    """
     d = params.defense
-    train_loader, val_loader = get_loaders(params)
-    x_val, y_val = loader_tensors(val_loader, d.fp_eval_samples)
+    clean_loader, x_val, y_val = defender_data(params, d.fp_eval_samples)
     res = fine_pruning(
         model,
         x_val.to(device),
         y_val.to(device),
-        train_loader,
+        clean_loader,
         d.fp_max_drop,
         d.fp_epochs,
         params.training.learning_rate,

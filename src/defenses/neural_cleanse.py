@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from src.utils.helper_data import load_mnist_tensors
+from src.utils.helper_data import defender_data
 from src.utils.helper_plot import plot_neural_cleanse
 from src.utils.helper_stats import anomaly_indices
 
@@ -107,13 +107,16 @@ def neural_cleanse(model, x, num_classes, steps, init_cost, lr, threshold):
 
 @DEFENSES.register("neural_cleanse", rank=1)
 def run_neural_cleanse(model, params, device):
-    """Reverse-engineer per-class triggers on clean test images and report."""
+    """Reverse-engineer per-class triggers on the defender's clean data and report.
+
+    The clean images come from the never-poisoned validation split.
+    """
     d = params.defense
-    x, _ = load_mnist_tensors(params, train=False)
+    _, x, _ = defender_data(params, d.nc_samples)
     torch.manual_seed(params.run.seed)
     res = neural_cleanse(
         model,
-        x[: d.nc_samples].to(device),
+        x.to(device),
         params.model.num_classes,
         d.nc_steps,
         d.nc_lambda,

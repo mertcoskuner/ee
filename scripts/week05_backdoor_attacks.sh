@@ -9,9 +9,9 @@ run --mode both "${TRAIN[@]}" --model cnn --backdoor none badnets blend dynamic 
     --num_samples "$NUM" --results_dir "$OUT/triggers"
 
 section "Data poisoning methods: effect of the poison rate"
-for rate in 0.01 0.05 0.1; do
+for rate in 0.01 0.05 0.2; do
     run --mode both "${TRAIN[@]}" --model cnn --backdoor badnets --poison_rate "$rate" --attack none \
-        --num_samples "$NUM" --results_dir "$OUT/poison_rate_$rate"
+        --num_samples "$NUM" --checkpoint_dir "$CKPT/poison_rate_$rate" --results_dir "$OUT/poison_rate_$rate"
 done
 ensure "$CKPT"/best_cnn_adam_bd-badnets.pth --model cnn --backdoor badnets
 

@@ -11,6 +11,8 @@ import dataclasses
 import itertools
 
 from models import MODELS
+from src.attacks import ATTACKS
+from src.backdoors import BACKDOORS
 from src.federated.aggregators import AGGREGATORS
 from src.federated.attacks import FL_ATTACKS
 from src.params.federated_params import SWEEP_FIELDS
@@ -46,8 +48,8 @@ def central_runs(params):
     """
     models = expand(params.model.model, MODELS.names())
     optimizers = expand(params.training.optimizer, OPTIMIZERS)
-    attacks = list(dict.fromkeys(params.training.train_attack))
-    backdoors = list(dict.fromkeys(params.backdoor.backdoor))
+    attacks = expand(params.training.train_attack, ATTACKS.names())
+    backdoors = expand(params.backdoor.backdoor, BACKDOORS.names())
     if params.run.mode == "federated":
         optimizers, attacks, backdoors = optimizers[:1], ["none"], ["none"]
     for model, optimizer, attack, backdoor in itertools.product(

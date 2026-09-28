@@ -12,7 +12,7 @@ class BackdoorParams:
     """
 
     backdoor: list[str] = field(default_factory=lambda: ["none"])
-    poison_rate: float = 0.1
+    poison_rate: float = 0.05
     target_class: int = 0
     trigger_size: int = 4
     blend_alpha: float = 0.2

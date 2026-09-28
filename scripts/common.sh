@@ -6,7 +6,7 @@ PYTHON=${PYTHON:-python}
 DEVICE=${DEVICE:-auto}
 QUICK=${QUICK:-0}
 RESULTS=${RESULTS:-results}
-CKPT=${CKPT:-checkpoints}
+if [ "$QUICK" = 1 ]; then CKPT=${CKPT:-checkpoints_quick}; else CKPT=${CKPT:-checkpoints}; fi
 
 if [ "$QUICK" = 1 ]; then
     EPOCHS=1; NUM=200; STEPS=10; CW_STEPS=50; QUERIES=200; AA_NUM=50

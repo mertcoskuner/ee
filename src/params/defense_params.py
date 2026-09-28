@@ -20,7 +20,7 @@ class DefenseParams:
     fp_eval_samples: int = 2000
     ls_samples: int = 5000
     ls_components: int = 10
-    ls_min_fraction: float = 0.35
+    ls_min_fraction: float = 0.4
     ls_threshold: float = 2.0
 
     @property

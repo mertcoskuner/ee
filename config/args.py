@@ -60,16 +60,17 @@ def args_parser(argv=None):
         parser.add_argument(f"--{name}", type=int, default=getattr(ModelParams, name))
 
     parser.add_argument("--data_dir", default=DataLoaderParams.data_dir)
-    for name in (
-        "batch_size",
-        "test_batch_size",
-        "num_workers",
-        "num_samples",
-        "validation_size",
-    ):
+    for name in ("batch_size", "test_batch_size", "num_workers", "validation_size"):
         parser.add_argument(
             f"--{name}", type=int, default=getattr(DataLoaderParams, name)
         )
+    parser.add_argument(
+        "--num_samples",
+        type=int,
+        default=DataLoaderParams.num_samples,
+        help="use only the first N test images in test, defense and geometry "
+        "(default: all; geometry uses 500)",
+    )
 
     parser.add_argument("--epochs", type=int, default=TrainingParams.epochs)
     parser.add_argument(
@@ -90,7 +91,7 @@ def args_parser(argv=None):
     parser.add_argument(
         "--train_attack",
         nargs="+",
-        choices=["none"] + ATTACKS.names(),
+        choices=["none"] + ATTACKS.names() + ["all"],
         default=["none"],
         help="attack(s) for adversarial training; none trains on clean data",
     )
@@ -107,7 +108,8 @@ def args_parser(argv=None):
         nargs="+",
         choices=["none"] + ATTACKS.names() + ["all"],
         default=AttackParams.attack,
-        help="attacks to evaluate; none tests clean accuracy only",
+        help="attacks to evaluate (default: fgsm pgd_linf pgd_l2; all adds the "
+        "slow lbfgs cw square autoattack; none tests clean accuracy only)",
     )
     parser.add_argument("--eps_linf", type=float, default=AttackParams.eps_linf)
     parser.add_argument("--eps_l2", type=float, default=AttackParams.eps_l2)
@@ -148,7 +150,7 @@ def args_parser(argv=None):
     parser.add_argument(
         "--backdoor",
         nargs="+",
-        choices=["none"] + BACKDOORS.names(),
+        choices=["none"] + BACKDOORS.names() + ["all"],
         default=["none"],
         help="trigger(s) poisoning the training data; none trains without one",
     )

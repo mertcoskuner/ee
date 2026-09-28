@@ -8,6 +8,7 @@ from .registry import ATTACKS
 @ATTACKS.register(
     "square",
     rank=6,
+    slow=True,
     black_box=True,
     label=lambda a: f"Square (eps={a.eps_linf}, {a.square_queries} queries)",
 )
